@@ -62,3 +62,42 @@ texto, `normalize_number` devuelve `None` para la predicción y para la referenc
 Usarla tal cual en GRPO haría que el modelo solo aprendiese el formato (reward hacking).
 Decisión: no modificar rewards.py; implementar un `AIActVerifier` en rlm/verifier.py y una
 recompensa de exactitud propia basada en él.
+
+### 2026-10-26 · Fase 1 · Motor de reglas del AI Act
+
+**Qué queríamos saber.** Si podíamos traducir el Reglamento (UE) 2024/1689 a reglas
+deterministas que sirvan a la vez de etiquetador del dataset, de verdad del verificador y, en
+la fase 2, de herramienta `classify_risk`.
+
+**Qué hicimos.** `rlm/aiact_rules.py`: un `SystemProfile` (~40 flags) entra en `classify()`
+y sale la etiqueta, el artículo decisivo, todas las reglas evaluadas (incluidas las
+excepciones) y las obligaciones. Cubre Art. 5.1.a-h con sus excepciones, Art. 6.1 + Anexo I
+(secciones A y B, solo con evaluación por terceros), los 25 puntos del Anexo III con sus
+exclusiones internas (verificación biométrica, fraude en 5.b, documentos de viaje en 7.d,
+logística de campañas en 8.b), Art. 6.3.a-d anulado por perfilado y Art. 50.1-4. Precedencia:
+prohibido > alto_riesgo > riesgo_limitado > riesgo_minimo; un sistema con varias funciones
+toma la más grave (`classify_components`). Utilidades para lo que viene: `flags_hash()` para
+deduplicar por flags y no por texto, `normalize_article()` / `article_match_score()` para la
+recompensa de dominio (1 cita exacta, 0.5 mismo artículo o punto, 0 otra) y `explain()` para
+trazas e informes. Tests en `tests/test_aiact_rules.py` (60), con los diez ejemplos de la
+propuesta como casos.
+
+Buscamos si existía algo parecido: AI Act Companion (Python), RiskLine (Go), ai-act-check,
+el toolkit de Microsoft y el árbol de decisión de TU Delft. Ninguno expone flags con los que
+generar un dataset, así que el motor es propio; los usaremos como contraste en el informe.
+
+**Qué pasó.** 60/60 tests en verde y `ruff` limpio. Decisiones legales tomadas:
+
+- Texto congelado en la versión del DOUE de 12-07-2024, sin el Digital Omnibus.
+- Fuera del modelo: GPAI (Arts. 51-56), software libre (Art. 2.12), ámbito territorial y la
+  cláusula "en la medida en que esté permitido" del Anexo III.
+- Biometría policial en tiempo real con objetivo permitido **y** autorización se etiqueta
+  `alto_riesgo` (Anexo III.1.a), no `prohibido`.
+- `riesgo_minimo` sin excepción aplicada no tiene artículo (`None`); con Art. 6.3 cita
+  `Art. 6.3.x`.
+- `fuera_de_ambito` existe solo si se marca explícitamente; el dataset no lo usará.
+
+**Qué concluimos.** El motor está listo para etiquetar, pero las reglas se escribieron sin
+el PDF del Reglamento en el repositorio: hay que revisarlas contra el texto oficial (sobre
+todo 5.1.h, 6.3 y 50). Siguiente paso: el generador de problemas con clases equilibradas por
+familia, varias plantillas y una familia reservada para OOD.
