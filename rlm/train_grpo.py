@@ -25,25 +25,21 @@ from __future__ import annotations
 import argparse
 from collections.abc import Sequence
 
+from rlm.aiact_rewards import aiact_accuracy_reward, citation_reward
 from rlm.data import load_domain_dataset, load_gsm8k
-from rlm.rewards import _completion_text, accuracy_reward, format_reward
+from rlm.rewards import accuracy_reward, format_reward
 
 
 def domain_reward(prompts: Sequence, completions: Sequence, **kwargs) -> list[float]:
-    """Tu turno: a reward that captures what "good" means in your domain.
+    """Correct legal basis, conditional on the correct label (``rlm.aiact_rewards``).
 
-    Same signature as the other rewards: one float per completion, dataset columns arrive
-    in ``kwargs``. Keep it deterministic and cheap. Examples from class and beyond:
-
-    * language consistency: fraction of words in the answer's language (DeepSeek-R1);
-    * length shaping: penalise thinking that exceeds a budget, or reward concise answers;
-    * a units check for physical quantities; a schema check for structured answers;
-    * a code-execution reward: run the unit tests of the problem (only in a sandbox!).
-
-    Until you implement it, it returns 0.0 everywhere so the script still runs.
+    A compliance officer acts on the article, not only on the tier: a right label with an
+    invented citation is a bad answer. The justification and the scale are in
+    ``rlm/aiact_rewards.py`` and in EXPERIMENTS.md. On GSM8K there is no citation, so 0.0.
     """
-    texts = [_completion_text(c) for c in completions]
-    return [0.0 for _ in texts]
+    if "valid_articles" not in kwargs:
+        return [0.0 for _ in completions]
+    return citation_reward(prompts, completions, **kwargs)
 
 
 def train(args: argparse.Namespace) -> None:
@@ -79,7 +75,7 @@ def train(args: argparse.Namespace) -> None:
         log_completions=True,
         num_completions_to_print=2,
         model_init_kwargs={"dtype": torch.bfloat16 if device == "cuda" else torch.float32},
-        # Tu turno: reward_weights=[1.0, 2.0, 0.5] lets you weight format / accuracy / domain.
+        reward_weights=[float(w) for w in args.reward_weights.split(",")],
     )
 
     if args.init_adapter:
@@ -101,9 +97,11 @@ def train(args: argparse.Namespace) -> None:
             task_type="CAUSAL_LM",
         )
 
+    # rlm.rewards.accuracy_reward is numeric and gives 1.0 to any text label (EXPERIMENTS.md).
+    accuracy = accuracy_reward if args.data == "gsm8k" else aiact_accuracy_reward
     trainer = GRPOTrainer(
         model=model,
-        reward_funcs=[format_reward, accuracy_reward, domain_reward],
+        reward_funcs=[format_reward, accuracy, domain_reward],
         args=config,
         train_dataset=dataset,
         peft_config=peft_config,
@@ -129,6 +127,11 @@ def main() -> None:
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--beta", type=float, default=0.0, help="KL coefficient (0 disables it)")
     parser.add_argument("--lora-rank", type=int, default=16)
+    parser.add_argument(
+        "--reward-weights",
+        default="0.5,1.0,0.5",
+        help="weights of format, accuracy and domain (citation) rewards, comma separated",
+    )
     parser.add_argument("--n-examples", type=int, default=None)
     parser.add_argument("--save-steps", type=int, default=50)
     parser.add_argument(

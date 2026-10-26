@@ -148,3 +148,41 @@ neutras, y termina con una instrucción fija que pide «etiqueta (artículo)».
   auditoría manual.
 - Pendiente: auditar a mano ~50 casos de test y, opcionalmente, una pasada de paráfrasis con
   un LLM para más diversidad léxica.
+
+### 2026-10-26 · Fase 1 · Verificador y recompensas del dominio
+
+**Qué queríamos saber.** Cómo comprobar automáticamente una respuesta «etiqueta (artículo)»
+sin dejar huecos para el *reward hacking*, y qué recompensa propia del dominio tiene sentido.
+
+**Qué hicimos.**
+
+- `AIActVerifier` (`rlm/verifier.py`): extrae la etiqueta del bloque `<answer>` (acepta
+  variantes: «alto riesgo», «ALTO-RIESGO», «high-risk», «práctica prohibida»…) y solo la da
+  por buena si hay **exactamente una**. Las etiquetas que aparezcan en `<think>` no cuentan.
+  Registrado en `VERIFIERS` de `rlm/inference.py` como `aiact` (`ARCA_RLM_VERIFIER=aiact`).
+- `rlm/aiact_rewards.py`: `aiact_accuracy_reward` sustituye a la `accuracy_reward` numérica
+  en `train_grpo.py` cuando los datos no son GSM8K. `citation_reward` es la `domain_reward`:
+  1 si la primera cita del `<answer>` está en `valid_articles`, 0,5 si coincide el artículo
+  o el punto del Anexo III pero no el apartado o la letra, 0 en otro caso, y **0 siempre que
+  la etiqueta sea incorrecta**. En riesgo mínimo sin artículo, no citar nada vale 1 e
+  inventarse una cita vale 0.
+- Pesos por defecto `--reward-weights 0.5,1.0,0.5` (formato, exactitud, cita).
+
+**Qué pasó.** Tests en verde (variantes de etiqueta, respuestas con dos etiquetas, etiquetas
+inventadas, citas en formato español e inglés). Con un «oráculo» que responde
+`etiqueta (artículo)` del motor, los tres conjuntos dan exactitud = cita = verificador = 1.0,
+así que datos, verificador y recompensas son coherentes entre sí. Un test deja documentado el
+fallo de la recompensa dada: `accuracy_reward` paga 1.0 por `etiqueta_inventada` y la nuestra 0.
+
+**Qué concluimos.** Decisiones contra el *reward hacking* que hay que defender en la oral:
+
+- Varias etiquetas = 0, para que no compense cubrirse («prohibido o alto_riesgo»).
+- La cita solo cuenta con la etiqueta correcta, para que no se optimice por separado.
+- Solo cuenta la primera cita, para que enumerar artículos no garantice acertar.
+- Citar algo cuando no hay nada que citar vale 0: un fundamento legal inventado es el peor
+  error para un responsable de compliance.
+
+Los pesos 0,5/1/0,5 son una hipótesis: la exactitud domina, el formato es un requisito previo
+y la cita, como mucho, iguala la mitad de la exactitud. Probaremos variantes en GRPO.
+Siguiente paso: destilación (`rlm/distill.py`) con un profesor Qwen3 en modo thinking,
+reportando la tasa de aceptación por familia.
