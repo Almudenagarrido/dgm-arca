@@ -579,3 +579,81 @@ coincidir exactamente con el de la ejecución original (algunos problemas repeti
 
 Ficheros: `rlm/weights/final_rlm_lora`, `reports/eval_test_grpo.json`,
 `reports/eval_test_ood_grpo.json`, `logs/train_grpo_resume3.log`, `logs/eval_grpo.log`.
+
+### 2026-11-03 · Fase 1 · Cierre: GRPO a mano, curvas, análisis de fallos y endpoint
+
+**GRPO a mano (`rlm/grpo_step.py`).** Ventajas por grupo `(r - media) / (std + eps)` (std
+muestral, como TRL), ratio `exp(logp_new - logp_old)`, objetivo recortado
+`min(ρ·A, clip(ρ, 1-ε, 1+ε)·A)`, KL de DeepSeekMath `exp(Δ) - Δ - 1` con `Δ = logp_ref - logp`, y
+pérdida = −(media por respuesta de la media por token válido − β·KL). Los 6 tests dados pasan;
+añadimos dos más: el padding enmascarado no cambia la pérdida, y con β > 0 la pérdida sube
+exactamente β·KL.
+
+**Curvas** (`rlm/plots.py` → `reports/phase1_grpo_curves.png`, `phase1_sft_loss.png`,
+`phase1_pass1.png`; historiales copiados a `reports/history_{sft,grpo}.json` para que las
+figuras se regeneren sin los pesos):
+
+- *SFT:* la pérdida baja de 0,82 a 0,45 y el acierto por token sube de 75 a 84 %. El escalón del
+  paso ~115 es el cambio de época (2 épocas, 230 pasos): el modelo vuelve a ver las mismas
+  trazas. No hay conjunto de validación, así que la curva no dice nada de sobreajuste; lo mide la
+  evaluación.
+- *GRPO:* recompensa 1,55 → ~1,80. El formato se satura en ~40 pasos (0,90 → 0,98); etiqueta
+  (0,75 → 0,89) y cita (0,69 → 0,84) suben más despacio y juntas. **La longitud baja** (786 → ~600
+  tokens), al revés que en R1-Zero: partimos de un SFT con trazas largas y una respuesta truncada
+  vale 0 en las tres recompensas, así que GRPO castiga directamente los bucles (truncadas 9 % → 2-3 %).
+  La reanudación del paso 175 no deja ningún salto visible.
+- *Señal que se agota:* la fracción de grupos con las 8 recompensas iguales (ventaja 0, sin
+  gradiente) sube de 0,33 a 0,55 por tramos de 50 pasos, y `reward_std` baja de 0,60 a 0,23. Al
+  final la mitad de los problemas ya no enseñan nada; más pasos con estos datos darían poco. Es el
+  argumento para parar en 250 y no alargar el entrenamiento.
+- *El recorte nunca actúa:* `clip_ratio` es 0 en los 250 pasos. Con `num_iterations = 1` cada
+  tanda se usa en un solo paso de optimización, así que π_θ = π_θ_old al calcular la pérdida y
+  ρ = 1. El recorte solo importa al reutilizar las mismas muestras en varios pasos (μ > 1). La
+  entropía se mantiene plana (~0,50): sin KL (β = 0) no vimos colapso.
+
+**Análisis de fallos** (GRPO, `reports/eval_test*_grpo.json`; 42 fallos de etiqueta o cita en
+test y 27 en OOD). Por tipo:
+
+1. **Bucles hasta el truncamiento (16/200 en test, 12/100 en OOD).** Test #8
+   (`derogation_profiling`, seguros que *perfilan* personas, esperado alto riesgo, III.5.c): el
+   modelo alterna «es tarea preparatoria → 6.3.d» y «pero mejora la redacción, no prepara una
+   evaluación» hasta agotar los 1536 tokens. El 43 % de las frases de las respuestas truncadas está
+   repetido, frente al 2 % en las demás. Son casos donde dos reglas chocan (excepción del 6.3 frente
+   a la cláusula de perfilado del último párrafo del 6.3).
+2. **Excepción del 6.3 aplicada pese al perfilado.** Test #17: revisa decisiones pasadas sin
+   sustituirlas y además «elabora un perfil de cada persona con predicciones sobre su
+   comportamiento». El modelo cita bien la letra c del 6.3 y concluye `riesgo_minimo (Art. 6.3.c)`
+   sin aplicar que el perfilado anula cualquier excepción. Es el sesgo que heredamos del profesor
+   Qwen3-8B y que GRPO solo corrige en parte (18 → 29 %).
+3. **Una obligación de transparencia tapa el alto riesgo.** Test #19: polígrafo en interrogatorios
+   policiales (Anexo III.6.b) con un chatbot que no se identifica. Responde `riesgo_limitado
+   (Art. 50.1)`: «the chatbot is the main interaction». Las obligaciones del Art. 50 se suman al
+   alto riesgo, no lo sustituyen. Pasa en 5 de los 19 casos `annex_iii` de test.
+4. **No ve la excepción del Art. 5.1.h.** Test #0: reconocimiento facial en tiempo real para
+   «pequeños hurtos». No es uno de los delitos graves del Anexo II, así que está prohibido, pero el
+   modelo duda entre 5.1.h y el Anexo III.1.a y elige alto riesgo. Lo mismo en 3 de 12
+   `police_rbi_prohibited`.
+5. **Contexto educativo fuera de distribución.** OOD #2: análisis de voz de alumnos en tutorías
+   para detectar frustración. El 5.1.f prohíbe el reconocimiento de emociones en educación, pero el
+   modelo razona «education → Annex III.1.c» y responde alto riesgo. En el caso médico (OOD #35) se
+   equivoca al revés: lee la excepción médica del 5.1.f y aun así concluye prohibido. El modelo
+   conoce la regla y su excepción, pero no siempre las aplica en el orden correcto.
+6. **Etiqueta bien, cita mal.** Test #23: herramienta que propone el fallo a los jueces. Acierta
+   alto riesgo pero cita III.5.a (servicios públicos) en lugar de III.8.a (administración de
+   justicia). La recompensa de cita existe para esto: este caso cuenta como acierto en pass@1 y como
+   fallo en etiqueta + cita.
+
+Además, el razonamiento sale en inglés en ~2/3 de las respuestas, aunque la pregunta y la respuesta
+están en español. Viene de las trazas del profesor y ninguna recompensa lo penaliza. Si importara
+al usuario, sería un candidato natural para la `domain_reward`.
+
+**Endpoint `/reasoning`.** `.env` (plantilla en `.env.example`): `ARCA_RLM_ADAPTER =
+rlm/weights/final_rlm_lora`, `ARCA_RLM_VERIFIER = aiact` y la nueva `ARCA_RLM_TEMPERATURE = 0`
+(greedy, como `evaluate.py`; antes el endpoint muestreaba siempre a 0,6). `docker-compose.yml`
+pasa `.env` al contenedor y `arca-api` lo lee al arrancar. El `max_new_tokens` por defecto sube de
+1024 a 1536, el presupuesto con el que se entrenó y evaluó: con 1024 se truncaría bastante más
+que el 8 %. Prueba con `uv run arca-api` (puerto 8077, porque el 8000 estaba ocupado en la DGX):
+`/health` marca `reasoning: ready`. En 8 casos de test, el veredicto coincide con `evaluate.py`
+en 7, y las 8 respuestas traen `thinking` y `answer` separados. La que difiere (#61) es un caso
+límite: generar en lote con padding a la izquierda y en bf16 no da exactamente los mismos tokens
+que generar de uno en uno.

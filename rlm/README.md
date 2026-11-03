@@ -104,11 +104,12 @@ visto) pasando `expected_answer`, y miraré:
 | `rewards.py` | hecho | Recompensas de formato y exactitud, extracción de respuestas |
 | `verifier.py` | hecho + tu turno | Interfaz `Verifier`, numérico y exacto; el vuestro va aquí |
 | `data.py` | hecho | Prompt de sistema de R1-Zero, carga de GSM8K y de vuestro JSONL |
-| `distill.py` | tu turno | Generar trazas con el profesor y filtrarlas con el verificador |
-| `train_sft.py` | esqueleto guiado | SFT con LoRA sobre trazas verificadas |
-| `train_grpo.py` | esqueleto guiado | GRPO con TRL; la tercera recompensa es vuestra |
-| `grpo_step.py` | tu turno | Un paso de GRPO a mano, con tests |
-| `evaluate.py` | tu turno | pass@1 base / SFT / GRPO y curvas |
+| `distill.py` | hecho | Generar trazas con el profesor y filtrarlas con el verificador |
+| `train_sft.py` | hecho | SFT con LoRA sobre trazas verificadas |
+| `train_grpo.py` | hecho | GRPO con TRL; la tercera recompensa es vuestra |
+| `grpo_step.py` | hecho | Un paso de GRPO a mano, con tests |
+| `evaluate.py` | hecho | pass@1 base / SFT / GRPO, por clase y por familia |
+| `plots.py` | hecho | Curvas de SFT y GRPO y barras base / SFT / GRPO en `reports/` |
 | `inference.py` | hecho | Carga base + adaptador, genera, separa, verifica; detrás de `/reasoning` |
 | `weights/` | vuestro | Adaptadores (fuera de git) |
 | `data/` | vuestro | Problemas y trazas (fuera de git si son grandes) |

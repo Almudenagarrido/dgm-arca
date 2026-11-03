@@ -18,6 +18,7 @@ import logging
 import time
 
 import uvicorn
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
 
@@ -129,7 +130,8 @@ def agent(request: AgentRequest):
 
 
 def main() -> None:
-    """Entry point for ``uv run arca-api``."""
+    """Entry point for ``uv run arca-api``. Reads ``.env`` first (real env vars win)."""
+    load_dotenv()
     uvicorn.run("api.app:app", host="0.0.0.0", port=int(env("ARCA_API_PORT", "8000")))
 
 

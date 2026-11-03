@@ -10,6 +10,8 @@ laptop, on the DGX and inside Docker:
 * ``ARCA_RLM_BASE_MODEL``  base model id (default ``Qwen/Qwen3-0.6B``)
 * ``ARCA_RLM_ADAPTER``     path to your trained LoRA adapter (e.g. ``rlm/weights/final_rlm_lora``)
 * ``ARCA_RLM_VERIFIER``    ``numeric`` (default), ``exact_match`` or ``aiact``; see ``VERIFIERS``
+* ``ARCA_RLM_TEMPERATURE`` sampling temperature (default 0.6); ``0`` decodes greedily, as
+  ``rlm/evaluate.py`` does, so the endpoint's verdicts match the reported pass@1
 
 Try it from the command line::
 
@@ -66,6 +68,7 @@ class ReasoningModel:
     base_model: str
     adapter_path: str | None = None
     verifier_name: str = "numeric"
+    temperature: float = 0.6
 
     @classmethod
     def from_env(cls) -> ReasoningModel:
@@ -83,6 +86,7 @@ class ReasoningModel:
             base_model=base_model,
             adapter_path=adapter,
             verifier_name=os.environ.get("ARCA_RLM_VERIFIER", "numeric"),
+            temperature=float(os.environ.get("ARCA_RLM_TEMPERATURE", "0.6")),
         )
 
     def load(self) -> None:
@@ -104,7 +108,7 @@ class ReasoningModel:
         self.model = model.eval()
         self.verifier = VERIFIERS[self.verifier_name]()
 
-    def generate(self, question: str, max_new_tokens: int = 1024) -> tuple[str, int]:
+    def generate(self, question: str, max_new_tokens: int = 1536) -> tuple[str, int]:
         """Return the raw completion and the number of generated tokens."""
         import torch
 
@@ -114,20 +118,23 @@ class ReasoningModel:
             build_prompt(question, system), tokenize=False, add_generation_prompt=True
         )
         inputs = self.tokenizer(text, return_tensors="pt").to(self.model.device)
+        sampling = (
+            {"do_sample": True, "temperature": self.temperature, "top_p": 0.95}
+            if self.temperature > 0
+            else {"do_sample": False}
+        )
         with torch.no_grad():
             out = self.model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
-                do_sample=True,
-                temperature=0.6,
-                top_p=0.95,
                 pad_token_id=self.tokenizer.pad_token_id or self.tokenizer.eos_token_id,
+                **sampling,
             )
         new_tokens = out[0, inputs["input_ids"].shape[1] :]
         return self.tokenizer.decode(new_tokens, skip_special_tokens=True), int(new_tokens.numel())
 
     def answer(
-        self, question: str, expected_answer: str | None = None, max_new_tokens: int = 1024
+        self, question: str, expected_answer: str | None = None, max_new_tokens: int = 1536
     ) -> ReasoningResponse:
         raw, n_tokens = self.generate(question, max_new_tokens)
         thinking, answer = split_thinking(raw)

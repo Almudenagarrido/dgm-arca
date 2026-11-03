@@ -6,8 +6,8 @@ Run::
         --adapters base=none sft=rlm/weights/sft_lora grpo=rlm/weights/final_rlm_lora
 
 It writes ``reports/phase1_eval.json`` with per-example verdicts (so you can do the failure
-analysis) and ``reports/phase1_pass1.png`` with the bar chart. ``--history`` plots the
-reward curves from the JSON history that the training scripts save.
+analysis) and a per-label and per-family summary. The figures (bar chart and training curves)
+come from ``rlm/plots.py``.
 """
 
 from __future__ import annotations

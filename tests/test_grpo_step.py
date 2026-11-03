@@ -1,16 +1,10 @@
-"""Checks for the hand-written GRPO step. They pass once you implement rlm/grpo_step.py."""
+"""Checks for the hand-written GRPO step in rlm/grpo_step.py."""
 
-import pytest
 import torch
 
 from rlm import grpo_step
 
-pending = pytest.mark.xfail(
-    raises=NotImplementedError, reason="Tu turno: rlm/grpo_step.py", strict=False
-)
 
-
-@pending
 def test_advantages_are_centered_and_scaled():
     rewards = torch.tensor([1.0, 0.0, 1.0, 0.0])
     adv = grpo_step.group_advantages(rewards)
@@ -20,19 +14,16 @@ def test_advantages_are_centered_and_scaled():
     assert torch.allclose(unscaled, torch.tensor([0.5, -0.5, 0.5, -0.5]))
 
 
-@pending
 def test_uniform_rewards_give_zero_advantage():
     adv = grpo_step.group_advantages(torch.ones(8))
     assert torch.allclose(adv, torch.zeros(8), atol=1e-6)
 
 
-@pending
 def test_ratio_is_one_when_policies_match():
     logp = torch.randn(4, 6)
     assert torch.allclose(grpo_step.policy_ratio(logp, logp.clone()), torch.ones(4, 6))
 
 
-@pending
 def test_clipping_limits_positive_and_negative_advantages():
     ratio = torch.tensor([[2.0], [0.2]])
     adv = torch.tensor([1.0, -1.0])
@@ -43,14 +34,12 @@ def test_clipping_limits_positive_and_negative_advantages():
     assert torch.isclose(obj[1, 0], torch.tensor(-0.8))
 
 
-@pending
 def test_kl_penalty_is_nonnegative_and_zero_at_equality():
     logp = torch.randn(3, 5)
     assert torch.allclose(grpo_step.kl_penalty(logp, logp), torch.zeros(3, 5), atol=1e-6)
     assert (grpo_step.kl_penalty(logp, logp + 0.3) >= 0).all()
 
 
-@pending
 def test_loss_pushes_probability_of_better_outputs_up():
     torch.manual_seed(0)
     logp_old = torch.log(torch.full((4, 5), 0.5))
@@ -63,3 +52,33 @@ def test_loss_pushes_probability_of_better_outputs_up():
     # and decrease those of unrewarded ones.
     assert (logp_new.grad[0] < 0).all() and (logp_new.grad[1] > 0).all()
     assert {"mean_advantage", "clip_fraction", "kl"} <= set(stats)
+
+
+def test_padding_tokens_do_not_change_the_loss():
+    torch.manual_seed(1)
+    logp_old = torch.randn(4, 3)
+    logp_new = logp_old + 0.1 * torch.randn(4, 3)
+    rewards = torch.tensor([1.0, 0.0, 0.5, 0.0])
+    loss, _ = grpo_step.grpo_loss(logp_new, logp_old, rewards, torch.ones(4, 3))
+    # Same outputs plus two padding positions holding garbage log-probs.
+    pad = torch.full((4, 2), 5.0)
+    mask = torch.cat([torch.ones(4, 3), torch.zeros(4, 2)], dim=1)
+    padded, _ = grpo_step.grpo_loss(
+        torch.cat([logp_new, pad], 1), torch.cat([logp_old, -pad], 1), rewards, mask
+    )
+    assert torch.isclose(loss, padded)
+
+
+def test_kl_term_raises_the_loss_and_is_reported():
+    torch.manual_seed(2)
+    logp_old = torch.randn(4, 5)
+    logp_ref = logp_old - 0.5
+    rewards = torch.tensor([1.0, 0.0, 1.0, 0.0])
+    mask = torch.ones(4, 5)
+    no_kl, _ = grpo_step.grpo_loss(logp_old, logp_old, rewards, mask, beta=0.0)
+    with_kl, stats = grpo_step.grpo_loss(
+        logp_old, logp_old, rewards, mask, beta=0.1, logp_ref=logp_ref
+    )
+    assert stats["kl"] > 0
+    assert torch.isclose(with_kl - no_kl, torch.tensor(0.1 * stats["kl"]), atol=1e-6)
+    assert stats["clip_fraction"] == 0.0  # ratio is exactly 1 on the first step
