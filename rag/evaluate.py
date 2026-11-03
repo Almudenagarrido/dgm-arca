@@ -339,6 +339,94 @@ def finish(results: dict) -> None:
     )
 
 
+RERANK_INSTRUCTIONS = {
+    "aiact_en": "Given a question about the EU AI Act, judge whether the passage answers it.",
+    "model_card": "Given a web search query, retrieve relevant passages that answer the query",
+    "aiact_es": "Dada una pregunta sobre el Reglamento europeo de IA, juzga si el pasaje la "
+    "responde.",
+}
+
+
+def rerank_experiment(args, results: dict) -> dict:
+    """Second stage on the chosen configuration: rerank the top-N first-stage candidates.
+
+    Two candidate sources: the hybrid retriever on the question, and the same interleaved with
+    the hybrid results for an English translation of the question (the draft high-risk
+    guidelines only exist in English). For a pool of n both sources give n candidates, so the
+    comparison is fair; the reranker always scores against the original question.
+    """
+    from rag.generate import RagPipeline
+    from rag.retriever import Reranker, interleave
+
+    chosen = results["chosen"]
+    pipeline = RagPipeline(
+        chunking=chosen["chunking"],
+        weight_bm25=chosen["lambda"],
+        rerank=False,
+        translate_query=False,
+    )
+    pipeline.load(generator=True)
+    hybrid = pipeline.retrievers["hybrid"]
+    chunks = hybrid.bm25.chunks
+    gold = [g for g in load_gold(args.gold) if g.get("answerable", True)]
+    relevants = [relevant_chunk_ids(g, chunks) for g in gold]
+    reranker = Reranker()
+    max_pool = max(args.rerank_pools)
+    hybrid.pool = max_pool
+    translations = {g["id"]: pipeline.translate(g["question"]) for g in gold}
+    sources = {"hybrid": [hybrid.search(g["question"], top_k=max_pool) for g in gold]}
+    sources["hybrid+en"] = [
+        interleave(cands, hybrid.search(translations[g["id"]], top_k=max_pool))[:max_pool]
+        for g, cands in zip(gold, sources["hybrid"], strict=True)
+    ]
+    out: dict = {
+        "chunking": chosen["chunking"],
+        "lambda": chosen["lambda"],
+        "translations": translations,
+        "first_stage_hit@pool": {},
+        "runs": {},
+    }
+    for source, candidates in sources.items():
+        first = [[h.chunk.id for h in c] for c in candidates]
+        out["first_stage_hit@pool"][source] = {
+            str(n): round(
+                sum(hit_at_k(r, g, n) for r, g in zip(first, relevants, strict=True)) / len(gold), 3
+            )
+            for n in args.rerank_pools
+        }
+        out["runs"][f"{source}/no-rerank"] = score_rankings(first, relevants, args.k)
+        print(f"  {source:>9} without reranker: {out['runs'][f'{source}/no-rerank']}", flush=True)
+        labels = RERANK_INSTRUCTIONS if source == "hybrid" else ["aiact_en"]
+        for label in labels:
+            # Score the largest pool once; smaller pools are prefixes of the same list.
+            scored = [
+                list(
+                    zip(
+                        c,
+                        reranker.score(
+                            g["question"], [h.chunk.text for h in c], RERANK_INSTRUCTIONS[label]
+                        ),
+                        strict=True,
+                    )
+                )
+                for g, c in zip(gold, candidates, strict=True)
+            ]
+            for n in args.rerank_pools:
+                ranked = [
+                    [h.chunk.id for h, _ in sorted(sc[:n], key=lambda x: -x[1])] for sc in scored
+                ]
+                key = f"{source}/{label}/pool{n}"
+                out["runs"][key] = score_rankings(ranked, relevants, args.k)
+                out.setdefault("per_question", {})[key] = {
+                    g["id"]: _first_rank(r, rel)
+                    for g, r, rel in zip(gold, ranked, relevants, strict=True)
+                }
+                print(f"  rerank {key:>32}: {out['runs'][key]}", flush=True)
+    best = max(out["runs"], key=lambda k: (out["runs"][k]["hit@5"], out["runs"][k]["mrr"]))
+    out["best"] = {"run": best, **out["runs"][best]}
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -350,7 +438,20 @@ def main() -> None:
     parser.add_argument("--example-doc", default="aiact/articulo_005.md")
     parser.add_argument("--out", default="reports/phase3_eval.json")
     parser.add_argument("--plot-only", action="store_true", help="redraw figures from --out")
+    parser.add_argument(
+        "--rerank",
+        action="store_true",
+        help="add the reranker experiment to an existing --out (chosen chunking and λ)",
+    )
+    parser.add_argument("--rerank-pools", type=int, nargs="+", default=[20, 30, 50, 75])
     args = parser.parse_args()
+
+    if args.rerank:
+        results = json.loads(Path(args.out).read_text())
+        results["rerank"] = rerank_experiment(args, results)
+        Path(args.out).write_text(json.dumps(results, indent=2, ensure_ascii=False))
+        print(f"best rerank: {results['rerank']['best']}")
+        return
 
     if args.plot_only:
         results = json.loads(Path(args.out).read_text())

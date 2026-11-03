@@ -34,15 +34,17 @@ contesta exactamente: «No lo sé».
 Pregunta: {question}"""
 
 
-def score(item: dict, answer: str, returned_ids: list[str], chunks) -> dict:
+def score(
+    item: dict, answer: str, returned_ids: list[str], chunks, invalid_labels: list[str] = ()
+) -> dict:
     cited = list(dict.fromkeys(CITATION_PATTERN.findall(answer)))
     answerable = item.get("answerable", True)
     relevant = relevant_chunk_ids(item, chunks) if answerable else set()
     keywords = [k.lower() for k in item.get("answer_keywords", [])]
     return {
         "cited": cited,
-        "invalid_citations": [c for c in cited if c not in returned_ids],
-        "citations_valid": all(c in returned_ids for c in cited),
+        "invalid_citations": [*invalid_labels, *(c for c in cited if c not in returned_ids)],
+        "citations_valid": not invalid_labels and all(c in returned_ids for c in cited),
         "has_citation": bool(cited),
         "cites_relevant": bool(set(cited) & relevant) if answerable else None,
         "retrieved_relevant": bool(set(returned_ids) & relevant) if answerable else None,
@@ -79,10 +81,11 @@ def main() -> None:
     parser.add_argument("--retriever", default="hybrid", choices=["dense", "bm25", "hybrid"])
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--closed-book", action="store_true", help="no retrieval (baseline)")
+    parser.add_argument("--thinking", action="store_true", help="Qwen3 reasons before answering")
     parser.add_argument("--out", default="reports/phase3_answers.json")
     args = parser.parse_args()
 
-    pipeline = RagPipeline()
+    pipeline = RagPipeline(thinking=args.thinking or None)
     pipeline.load()
     chunks = pipeline.retrievers["bm25"].chunks
     rows = []
@@ -94,7 +97,8 @@ def main() -> None:
         else:
             response = pipeline.answer(item["question"], args.top_k, args.retriever)
             answer, returned = response.answer, [c.id for c in response.chunks]
-        scores = score(item, answer, returned, chunks)
+        invalid = [] if args.closed_book else response.invalid_citations
+        scores = score(item, answer, returned, chunks, invalid)
         if args.closed_book:  # nothing to cite: only the facts and the refusals count
             scores.update(
                 citations_valid=None,

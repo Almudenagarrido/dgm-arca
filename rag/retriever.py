@@ -132,3 +132,103 @@ class HybridRetriever:
         }
         order = sorted(scored, key=scored.get, reverse=True)[:top_k]
         return [Hit(by_id[cid], scored[cid]) for cid in order]
+
+
+def interleave(*lists: list) -> list:
+    """Merge ranked hit lists turn by turn, keeping the first occurrence of each chunk."""
+    seen, out = set(), []
+    for group in zip(*lists, strict=False):
+        for hit in group:
+            if hit.chunk.id not in seen:
+                seen.add(hit.chunk.id)
+                out.append(hit)
+    return out
+
+
+DEFAULT_RERANK_INSTRUCTION = (
+    "Given a question about the EU AI Act, judge whether the passage answers it."
+)
+
+
+class Reranker:
+    """Qwen3-Reranker as a cross-encoder: score = P("yes" | instruction, query, passage).
+
+    Unlike the embedding model, which encodes query and passage separately, the reranker reads
+    both together, so it can tell "the passage that answers" from "a passage on the same topic".
+    It is too slow for 3000 chunks but fine for the 20-50 candidates of the first stage. The
+    prompt is the one in the model card.
+    """
+
+    PREFIX = (
+        "<|im_start|>system\nJudge whether the Document meets the requirements based on the "
+        'Query and the Instruct provided. Note that the answer can only be "yes" or "no".'
+        "<|im_end|>\n<|im_start|>user\n"
+    )
+    SUFFIX = "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+
+    def __init__(self, model_id: str = "Qwen/Qwen3-Reranker-0.6B", max_length: int = 1024):
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        self.model_id, self.max_length = model_id, max_length
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        dtype = torch.bfloat16 if device == "cuda" else torch.float32
+        self.tokenizer = AutoTokenizer.from_pretrained(model_id, padding_side="left")
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_id, dtype=dtype, device_map=device
+        ).eval()
+        self.yes = self.tokenizer.convert_tokens_to_ids("yes")
+        self.no = self.tokenizer.convert_tokens_to_ids("no")
+
+    def score(
+        self,
+        query: str,
+        passages: list[str],
+        instruction: str = DEFAULT_RERANK_INSTRUCTION,
+        batch_size: int = 16,
+    ) -> list[float]:
+        import torch
+
+        scores: list[float] = []
+        for start in range(0, len(passages), batch_size):
+            texts = [
+                f"{self.PREFIX}<Instruct>: {instruction}\n<Query>: {query}\n<Document>: {p}"
+                for p in passages[start : start + batch_size]
+            ]
+            # Truncate the passage, never the closing tags that ask for the answer.
+            body = self.tokenizer(
+                texts, truncation=True, add_special_tokens=False, max_length=self.max_length - 16
+            )["input_ids"]
+            suffix = self.tokenizer(self.SUFFIX, add_special_tokens=False)["input_ids"]
+            batch = self.tokenizer.pad(
+                {"input_ids": [b + suffix for b in body]}, return_tensors="pt"
+            ).to(self.model.device)
+            with torch.no_grad():
+                # Only the last position matters; full logits would be batch x length x 152k.
+                logits = self.model(**batch, logits_to_keep=1).logits[:, -1, :]
+            pair = torch.stack([logits[:, self.no], logits[:, self.yes]], dim=1).float()
+            scores += torch.softmax(pair, dim=1)[:, 1].tolist()
+        return scores
+
+
+class RerankedRetriever:
+    """First stage (any retriever) for ``pool`` candidates, then the cross-encoder reorders them."""
+
+    def __init__(
+        self,
+        first_stage,
+        reranker: Reranker,
+        pool: int = 30,
+        instruction: str = DEFAULT_RERANK_INSTRUCTION,
+    ):
+        self.first_stage, self.reranker = first_stage, reranker
+        self.pool, self.instruction = pool, instruction
+        self.name = f"{first_stage.name}+rerank"
+
+    def search(self, query: str, top_k: int = 5) -> list[Hit]:
+        return self.rerank(query, self.first_stage.search(query, top_k=self.pool), top_k)
+
+    def rerank(self, query: str, candidates: list[Hit], top_k: int) -> list[Hit]:
+        scores = self.reranker.score(query, [h.chunk.text for h in candidates], self.instruction)
+        order = sorted(range(len(candidates)), key=lambda i: scores[i], reverse=True)[:top_k]
+        return [Hit(candidates[i].chunk, scores[i]) for i in order]

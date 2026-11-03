@@ -107,6 +107,8 @@ class RagResponse(BaseModel):
     citations: list[str] = Field(default_factory=list, description="Chunk ids cited in the answer.")
     retriever: Literal["dense", "bm25", "hybrid"]
     model: str = ""
+    # Optional extra: citation labels the model wrote that point to no returned chunk.
+    invalid_citations: list[str] = Field(default_factory=list)
 
 
 # -------------------------------------------------------------------------- phase 4: /agent

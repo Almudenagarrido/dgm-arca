@@ -37,29 +37,72 @@ Question: {question}
 # not answer, so that "I don't know" can be detected automatically).
 NOT_FOUND = "No lo sé: los documentos recuperados no contienen esa información."
 DOMAIN_RULES = f"""Responde en español, en dos a cinco frases.
-Cada afirmación debe apoyarse en un fragmento citado con su id entre corchetes, por ejemplo \
-[{{example_id}}]; no cites ids que no aparezcan arriba.
-Usa solo la información recuperada, no lo que sepas por tu cuenta.
-Si los fragmentos no responden a la pregunta, contesta exactamente: «{NOT_FOUND}»"""
+Cada afirmación debe apoyarse en un fragmento citado con su etiqueta entre corchetes, por \
+ejemplo [{{example_id}}]; usa solo las etiquetas de los fragmentos de arriba.
+Usa solo la información recuperada, no lo que sepas por tu cuenta. Lee con atención las \
+negaciones y las excepciones («no se aplicará», «salvo», «siempre se considerarán»): \
+la respuesta tiene que decir lo mismo que el fragmento, no lo contrario.
+Si los fragmentos no responden exactamente a lo que se pregunta, no completes la respuesta \
+con información relacionada: contesta solo, exactamente: «{NOT_FOUND}»"""
 
 DEFAULT_CHUNKING = "semantic-0.70+title"
 DEFAULT_LAMBDA = "0.3"
+DEFAULT_RERANK_POOL = "30"
+DEFAULT_TRANSLATE = "1"
+# Reranker probability below which the pipeline answers NOT_FOUND without generating. On the gold
+# set the lowest answerable question scores 0.990 and four of the five unanswerable ones 0.960
+# or less (docs/EXPERIMENTS.md).
+DEFAULT_MIN_SCORE = "0.975"
+FUSION_POOL = 75
+
+
+def _flag(name: str, default: str) -> bool:
+    return os.environ.get(name, default).strip().lower() in ("1", "true", "yes")
+
 
 CITATION_PATTERN = re.compile(r"\[([A-Za-z0-9_-]+)\]")
 
 
+LABEL_PATTERN = re.compile(r"\[F(\d+)\]")
+
+
+def label(position: int) -> str:
+    """Short citation label for the chunk at ``position`` (1-based) in the prompt."""
+    return f"F{position}"
+
+
 def format_chunks(hits: list[Hit]) -> str:
+    # The model cites short labels (F1, F2...) instead of the chunk ids: with ids such as
+    # "a042e32725-0009" in front of it, it sometimes invented the neighbour "-0010".
     return "\n\n".join(
-        f"[{hit.chunk.id}] (from {hit.chunk.source})\n{hit.chunk.text}" for hit in hits
+        f"[{label(i)}] (from {hit.chunk.source})\n{hit.chunk.text}"
+        for i, hit in enumerate(hits, start=1)
     )
 
 
 def build_prompt(question: str, hits: list[Hit]) -> str:
-    example_id = hits[0].chunk.id if hits else "chunk-id"
+    example_id = label(1)
     prompt = RAG_PROMPT_TEMPLATE.format(
         example_id=example_id, chunks=format_chunks(hits), question=question
     )
     return f"{prompt}\n{DOMAIN_RULES.format(example_id=example_id)}"
+
+
+def resolve_labels(answer: str, hits: list[Hit]) -> tuple[str, list[str]]:
+    """Replace [F<n>] with the real chunk id; drop labels that point to no chunk.
+
+    Returns the answer with ids, as the API contract expects, and the invalid labels found.
+    """
+    invalid: list[str] = []
+
+    def replace(match: re.Match) -> str:
+        n = int(match.group(1))
+        if 1 <= n <= len(hits):
+            return f"[{hits[n - 1].chunk.id}]"
+        invalid.append(match.group(0))
+        return ""
+
+    return LABEL_PATTERN.sub(replace, answer).replace(" .", "."), invalid
 
 
 def says_not_found(answer: str) -> bool:
@@ -75,7 +118,13 @@ def extract_citations(answer: str, valid_ids: set[str]) -> list[str]:
     return seen
 
 
-def to_response(answer: str, hits: list[Hit], retriever: str, model: str = "") -> RagResponse:
+def to_response(
+    answer: str,
+    hits: list[Hit],
+    retriever: str,
+    model: str = "",
+    invalid_citations: list[str] | None = None,
+) -> RagResponse:
     chunks = [
         RetrievedChunk(id=h.chunk.id, source=h.chunk.source, score=h.score, text=h.chunk.text)
         for h in hits
@@ -86,6 +135,7 @@ def to_response(answer: str, hits: list[Hit], retriever: str, model: str = "") -
         citations=extract_citations(answer, {c.id for c in chunks}),
         retriever=retriever,
         model=model,
+        invalid_citations=invalid_citations or [],
     )
 
 
@@ -141,8 +191,12 @@ class RagPipeline:
     Configuration (all optional): ``ARCA_RAG_CHUNKING`` (``recursive`` or ``semantic-<t>``,
     with an optional ``+title`` suffix),
     ``ARCA_RAG_LAMBDA`` (BM25 weight of the hybrid), ``ARCA_RAG_MODEL`` (generator, default
-    the phase-2 model ``Qwen/Qwen3-4B``). The defaults are the ones the gold set chose
-    (``docs/EXPERIMENTS.md``).
+    the phase-2 model ``Qwen/Qwen3-4B``), ``ARCA_RAG_RERANK`` (``1``: rerank the first-stage
+    candidates with Qwen3-Reranker), ``ARCA_RAG_RERANK_POOL`` (how many candidates),
+    ``ARCA_RAG_TRANSLATE`` (``1``: also search with an English translation of the question),
+    ``ARCA_RAG_THINKING`` (``1``: Qwen3 reasons before answering), ``ARCA_RAG_MIN_SCORE``
+    (reranker score under which the answer is ``NOT_FOUND``).
+    The defaults are the ones the gold set chose (``docs/EXPERIMENTS.md``).
     """
 
     def __init__(
@@ -151,6 +205,9 @@ class RagPipeline:
         weight_bm25: float | None = None,
         model_id: str | None = None,
         max_new_tokens: int = 512,
+        rerank: bool | None = None,
+        translate_query: bool | None = None,
+        thinking: bool | None = None,
     ):
         self.chunking = chunking or os.environ.get("ARCA_RAG_CHUNKING", DEFAULT_CHUNKING)
         self.weight_bm25 = (
@@ -160,7 +217,17 @@ class RagPipeline:
         )
         self.model_id = model_id or os.environ.get("ARCA_RAG_MODEL", "Qwen/Qwen3-4B")
         self.max_new_tokens = max_new_tokens
+        self.rerank = rerank if rerank is not None else _flag("ARCA_RAG_RERANK", "1")
+        self.rerank_pool = int(os.environ.get("ARCA_RAG_RERANK_POOL", DEFAULT_RERANK_POOL))
+        self.translate_query = (
+            translate_query
+            if translate_query is not None
+            else _flag("ARCA_RAG_TRANSLATE", DEFAULT_TRANSLATE)
+        )
+        self.thinking = thinking if thinking is not None else _flag("ARCA_RAG_THINKING", "0")
+        self.min_score = float(os.environ.get("ARCA_RAG_MIN_SCORE", DEFAULT_MIN_SCORE))
         self.retrievers: dict = {}
+        self.reranker = None
 
     def load(self, generator: bool = True) -> None:
         """Ingest -> chunk -> the three retrievers (dense index cached in rag/index/) -> model."""
@@ -182,28 +249,49 @@ class RagPipeline:
             "dense": dense,
             "hybrid": HybridRetriever(bm25, dense, weight_bm25=self.weight_bm25),
         }
-        if generator:
+        if self.rerank:
+            from rag.retriever import Reranker
+
+            self.reranker = Reranker()
+            # As in the experiment: each list contributes FUSION_POOL hits before the hybrid
+            # fusion, so the min-max rescaling and the top of the merged list are the same.
+            self.retrievers["hybrid"].pool = FUSION_POOL
+        if generator or self.translate_query:
             from rlm.gpu import shared_causal_lm
 
             self.tokenizer, self.model = shared_causal_lm(self.model_id)
 
     def retrieve(self, question: str, top_k: int, retriever: str) -> list[Hit]:
-        return self.retrievers[retriever].search(question, top_k=top_k)
+        """First stage (the requested retriever), optional English query, then the reranker."""
+        first_stage = self.retrievers[retriever]
+        if not self.rerank:
+            return first_stage.search(question, top_k=top_k)
+        candidates = first_stage.search(question, top_k=self.rerank_pool)
+        if self.translate_query:
+            from rag.retriever import interleave
 
-    def generate(self, prompt: str) -> str:
+            english = first_stage.search(self.translate(question), top_k=self.rerank_pool)
+            candidates = interleave(candidates, english)[: self.rerank_pool]
+        scores = self.reranker.score(question, [h.chunk.text for h in candidates])
+        order = sorted(range(len(candidates)), key=lambda i: scores[i], reverse=True)[:top_k]
+        return [Hit(candidates[i].chunk, scores[i]) for i in order]
+
+    def generate(self, prompt: str, thinking: bool | None = None) -> str:
+        """Greedy answer; with ``thinking`` Qwen3 reasons first (the reasoning is dropped)."""
         import torch
 
+        thinking = self.thinking if thinking is None else thinking
         text = self.tokenizer.apply_chat_template(
             [{"role": "user", "content": prompt}],
             tokenize=False,
             add_generation_prompt=True,
-            enable_thinking=False,
+            enable_thinking=thinking,
         )
         inputs = self.tokenizer(text, return_tensors="pt").to(self.model.device)
         with torch.no_grad():
             out = self.model.generate(
                 **inputs,
-                max_new_tokens=self.max_new_tokens,
+                max_new_tokens=self.max_new_tokens * (4 if thinking else 1),
                 do_sample=False,
                 pad_token_id=self.tokenizer.pad_token_id or self.tokenizer.eos_token_id,
             )
@@ -212,10 +300,26 @@ class RagPipeline:
         )
         return raw.split("</think>", 1)[-1].strip()
 
+    def translate(self, question: str) -> str:
+        """English version of the question, to search the English-only documents too."""
+        prompt = (
+            "Translate this question into English. Do not answer it; write only the "
+            f"translation.\n\n{question}"
+        )
+        saved, self.max_new_tokens = self.max_new_tokens, 96
+        try:
+            return self.generate(prompt, thinking=False).strip().strip('"')
+        finally:
+            self.max_new_tokens = saved
+
     def answer(self, question: str, top_k: int = 5, retriever: str = "hybrid") -> RagResponse:
         hits = self.retrieve(question, top_k, retriever)
-        answer = self.generate(build_prompt(question, hits))
-        return to_response(answer, hits, retriever, self.model_id)
+        if self.rerank and hits and hits[0].score < self.min_score:
+            # Not even the best candidate answers the question according to the reranker:
+            # say so instead of letting the generator fill the gap with related text.
+            return to_response(NOT_FOUND, hits, retriever, self.model_id)
+        answer, invalid = resolve_labels(self.generate(build_prompt(question, hits)), hits)
+        return to_response(answer, hits, retriever, self.model_id, invalid)
 
 
 _pipeline: RagPipeline | None = None

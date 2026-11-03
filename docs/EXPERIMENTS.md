@@ -921,3 +921,107 @@ embeddings no caben en 16 GB. 11 tests nuevos sin red ni GPU (`tests/test_rag_pi
 
 Ficheros: `reports/phase3_eval.json`, `phase3_answers.json`, `phase3_answers_closed_book.json`,
 `phase3_sentence_distances.png`, `phase3_lambda_sweep.png`.
+
+### 2026-11-03 · Fase 3 · Segunda iteración: reranker, consulta traducida, citas por etiqueta y umbral de «No lo sé»
+
+**Por qué.** Con la primera versión, el pasaje correcto solo llegaba al top 5 en el 63 % de las
+preguntas y la generación no podía pasar de ahí. Sin embargo, en el 89 % de las preguntas el
+pasaje estaba entre los 20 primeros de BM25 o del denso: el problema era el orden, no la
+cobertura. Es lo que arregla un reranker.
+
+**Conjunto dorado corregido.** Al leer los fallos que seguían tras el reranker, encontramos 5
+preguntas donde el pasaje recuperado enuncia la misma regla en otra fuente:
+
+- q05: el borrador de alto riesgo explica que el perfilado anula el Art. 6.3;
+- q21: el apartado 222 de las directrices sobre el Art. 5.1.e;
+- q27: el Art. 72.3;
+- q28: el apartado 256 de las directrices sobre la excepción médica o de seguridad;
+- q33: el apartado 241 de las directrices sobre la fiabilidad del reconocimiento de emociones.
+
+Las añadimos como evidencia alternativa, marcadas en `notes`. **Todas las cifras de esta entrada
+son con el conjunto corregido.** La tabla de chunking de la entrada anterior se recalculó con él
+(`reports/phase3_eval.json`) y la conclusión no cambia: el semántico 0,70 con título y λ = 0,3
+siguen siendo los mejores (híbrido: 0,46 / 0,65 / 0,55 en hit@1 / hit@5 / MRR).
+
+**Reranker** (Qwen3-Reranker-0.6B como cross-encoder: puntuación = P(«yes») con el prompt de la
+ficha del modelo; `rag/evaluate.py --rerank`):
+
+| Segunda etapa | Candidatos | hit@1 | hit@5 | MRR |
+|---|---|---|---|---|
+| ninguna (híbrido) | — | 0,43 | 0,67 | 0,55 |
+| reranker | 20 | 0,46 | 0,80 | 0,60 |
+| reranker | 50 | 0,48 | 0,85 | 0,65 |
+| híbrido + consulta traducida al inglés, sin reranker | — | 0,43 | 0,72 | 0,56 |
+| **híbrido + consulta en inglés + reranker** | **30** | **0,52** | **0,89** | **0,69** |
+
+- **Instrucción del reranker:** la del dominio en inglés da el mejor hit@5; la de la ficha del
+  modelo, el mejor hit@1 (0,52 frente a 0,48 con 50 candidatos); la española queda en medio.
+  Dejamos la del dominio en inglés: el generador lee los 5 primeros, así que nos importa más el
+  hit@5.
+- **Consulta traducida:** el generador traduce la pregunta al inglés, se recupera con las dos
+  versiones y se intercalan los resultados. Sirve para las preguntas sobre el borrador de alto
+  riesgo, que solo existe en inglés. Con ella el pasaje entra entre los 30 primeros en el 96 % de
+  las preguntas (87 % sin ella), y basta con 30 candidatos en lugar de 50.
+- **Un fallo nuestro de memoria:** el reranker calculaba los logits de todo el vocabulario (152k)
+  en todas las posiciones del lote y se quedaba sin memoria junto a Qwen3-4B. Con
+  `logits_to_keep=1` solo calcula el último token.
+- **Otro fallo nuestro:** el pipeline de la API fusionaba 20 candidatos por lista y el experimento
+  75. Con 20, la API recuperaba el pasaje en el 83 % de las preguntas en lugar del 89 %. Ahora usa
+  75 (`FUSION_POOL`).
+
+**Generación:**
+
+- **Citas por etiqueta.** El prompt muestra `[F1]…[F5]` en lugar de los ids, y `resolve_labels`
+  los convierte después en ids reales. Así el modelo ya no se inventa ids vecinos (`-0010` por
+  `-0009`). Las etiquetas que no apuntan a ningún fragmento salen en `invalid_citations`, un campo
+  opcional nuevo de `/rag`.
+- **Reglas del prompt.** Una regla para leer las negaciones y las excepciones («la respuesta tiene
+  que decir lo mismo que el fragmento, no lo contrario») y otra para no completar con información
+  relacionada. q05, que antes decía lo contrario de su fuente, ahora es correcta.
+- **Umbral de «No lo sé».** Si la mejor puntuación del reranker es menor que 0,975, el pipeline
+  responde «No lo sé» sin llamar al generador. En el conjunto dorado, la pregunta con respuesta
+  más baja saca 0,990 y las preguntas sin respuesta 0,27 / 0,38 / 0,92 / 0,96 / 0,996. Cuatro
+  preguntas nuevas fuera del corpus, que no están en el conjunto dorado, sacan 0,10, 0,53, 0,59 y
+  0,95. **El umbral se eligió con el mismo conjunto que evalúa y el margen es estrecho**
+  (0,96–0,99); con preguntas nuevas puede fallar. La que se escapa es q47 (multa del RGPD, 0,996):
+  el corpus sí habla del RGPD, aunque no de esa multa.
+
+**Juez** (`rag/judge.py`). La métrica de palabra clave infravalora las respuestas correctas
+parafraseadas, así que añadimos un juez: Qwen3-4B en modo razonamiento compara cada respuesta con
+la evidencia del conjunto dorado y con los fragmentos que cita. Es el mismo modelo que el
+generador, porque uno mayor no cabe en 16 GB. Por eso juzga contra la evidencia, no con su propio
+criterio. Leímos a mano los 7 casos en que juez y palabra clave discrepaban: coincidimos con el
+juez en 6, que reconoce bien paráfrasis como `$10^{25}$` o «no puede acogerse» por «siempre se
+considerarán». En q44 fue benévolo: es una respuesta parcial que dio por correcta. La verdad está
+entre las dos métricas, más cerca del juez.
+
+**Resultado final** (`reports/phase3_answers.json`, configuración por defecto: semántico 0,70 con
+título, híbrido λ = 0,3 con 75 candidatos por lista, consulta en inglés, reranker sobre 30, umbral
+0,975, 5 fragmentos, sin razonamiento):
+
+| | 1.ª versión | Reranker, candidatos = 20 | **Final** | 8 fragmentos | Con razonamiento |
+|---|---|---|---|---|---|
+| Pasaje relevante entre los 5 recuperados | 63 % | 83 % | **89 %** | 85 % | 83 % |
+| Dato clave en la respuesta | 63 % | 83 % | **87 %** | 87 % | 74 % |
+| Juez: correcta | — | 93 % | **96 %** | 89 % | 93 % |
+| Juez: correcta o parcial | — | 98 % | **100 %** | 96 % | 93 % |
+| Juez: fiel a los fragmentos citados | — | 96 % | **100 %** | 91 % | 91 % |
+| Respuestas con cita / sin ids inválidos | 91 % / 94 % | 98 % / 100 % | **100 % / 100 %** | — / 100 % | — / 100 % |
+| Se niega teniendo la respuesta | 9 % | 2 % | **0 %** | 4 % | 4 % |
+| «No lo sé» en las 5 sin respuesta | 3/5 | 4/5 | **4/5** | 4/5 | 4/5 |
+| Segundos por pregunta | ~3 | 3,7 | 3,7 | 4,1 | 11,2 |
+
+Las variantes «8 fragmentos» y «con razonamiento» se midieron con 20 candidatos por lista, antes
+del ajuste de `FUSION_POOL`; se comparan con la columna «Reranker, candidatos = 20». **Más contexto
+empeora** (89 % correctas frente a 93 %): los fragmentos 6 a 8 añaden ruido que el modelo mezcla en
+la respuesta y la fidelidad baja. **El razonamiento** iguala la corrección, pero tarda el triple y
+es menos fiel. No compensa ninguna de las dos.
+
+**Lo que queda.** Dos respuestas parciales: q07 (gestión de riesgos: omite una de las cuatro
+etapas) y q23 (Anexo IV: no se recupera el punto 1.a y la respuesta se apoya en el Art. 11).
+También q47, que contesta con un rodeo en lugar de «No lo sé». Además, el conjunto dorado sigue
+siendo un borrador que el equipo tiene que revisar. Con n = 46, una pregunta son 2,2 puntos.
+
+Ficheros: `reports/phase3_eval.json` (incluye `rerank`), `phase3_answers.json` (final, con juez),
+`phase3_answers_pool20.json`, `phase3_answers_top8.json`, `phase3_answers_thinking.json`,
+`phase3_answers_before_rerank.json`, `phase3_answers_closed_book.json`.

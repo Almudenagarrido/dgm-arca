@@ -79,9 +79,10 @@ leyendo vuestro corpus, y con alguna que el corpus no puede responder, y miraré
 | `ingest.py` | hecho | Lee el corpus (PDF, MD, TXT, HTML) como `Document` con id y fuente |
 | `chunking.py` | hecho | Recursivo y semántico (distancia entre frases consecutivas con umbral); estadísticas |
 | `embed.py` | hecho | Qwen3-Embedding-0.6B con instrucción para las consultas |
-| `retriever.py` | hecho | BM25, denso (matriz NumPy persistida en `index/`) e híbrido con min-max y λ |
-| `generate.py` | hecho | Prompt aumentado con ids, generación con Qwen3-4B, citas y «No lo sé»; detrás de `/rag` |
+| `retriever.py` | hecho | BM25, denso (matriz NumPy persistida en `index/`), híbrido con min-max y λ, y reranker Qwen3-Reranker |
+| `generate.py` | hecho | Consulta traducida, reranking, umbral de «No lo sé», citas por etiqueta y generación con Qwen3-4B; detrás de `/rag` |
 | `evaluate.py` | hecho | Hit@k, Recall@k y MRR por chunking y retriever, barrido de λ y de instrucciones, figuras |
 | `evaluate_answers.py` | hecho | Citas válidas y relevantes, dato clave, negativas correctas; comparación sin RAG |
-| `gold/gold.jsonl` | borrador | 51 preguntas (46 con evidencia literal + 5 sin respuesta en el corpus) |
+| `judge.py` | hecho | Juez (Qwen3-4B en modo razonamiento): corrección frente a la evidencia y fidelidad a las citas |
+| `gold/gold.jsonl` | borrador | 51 preguntas (46 con evidencia literal, 6 con alternativas, y 5 sin respuesta) |
 | `CORPUS.md` | hecho | Fuentes, licencias y calidad del texto |

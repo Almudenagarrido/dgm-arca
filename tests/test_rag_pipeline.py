@@ -7,9 +7,9 @@ import pytest
 
 from rag.chunking import Chunk, semantic_chunks
 from rag.evaluate import hit_at_k, relevant_chunk_ids
-from rag.generate import NOT_FOUND, build_prompt, says_not_found, to_response
+from rag.generate import NOT_FOUND, build_prompt, resolve_labels, says_not_found, to_response
 from rag.ingest import Document
-from rag.retriever import DenseRetriever, Hit, HybridRetriever
+from rag.retriever import DenseRetriever, Hit, HybridRetriever, interleave
 
 
 def topic_embedder(sentences: list[str]) -> np.ndarray:
@@ -102,9 +102,40 @@ def test_not_found_is_detected(answer):
     assert says_not_found(answer)
 
 
-def test_prompt_lists_ids_and_response_drops_invented_citations():
-    hits = [Hit(_chunk("d-0001", "texto del artículo 5"), 0.9)]
+def test_prompt_uses_labels_and_answers_get_real_ids():
+    hits = [Hit(_chunk("d-0001", "texto del artículo 5"), 0.9), Hit(_chunk("e-0002", "otro"), 0.5)]
     prompt = build_prompt("¿Qué dice?", hits)
-    assert "[d-0001]" in prompt and "No lo sé" in prompt
-    response = to_response("Está prohibido [d-0001] [zz-9999].", hits, "hybrid")
-    assert response.citations == ["d-0001"]
+    assert "[F1]" in prompt and "[F2]" in prompt and "d-0001" not in prompt
+    assert "No lo sé" in prompt
+    answer, invalid = resolve_labels("Está prohibido [F1]. También [F2] y [F7].", hits)
+    assert answer == "Está prohibido [d-0001]. También [e-0002] y." and invalid == ["[F7]"]
+    response = to_response(answer, hits, "hybrid", invalid_citations=invalid)
+    assert response.citations == ["d-0001", "e-0002"] and response.invalid_citations == ["[F7]"]
+
+
+def test_interleave_merges_turn_by_turn_without_duplicates():
+    a, b, c = _chunk("a-0"), _chunk("b-0"), _chunk("c-0")
+    merged = interleave([Hit(a, 1), Hit(b, 0.5)], [Hit(b, 1), Hit(c, 0.2)])
+    assert [h.chunk.id for h in merged] == ["a-0", "b-0", "c-0"]
+
+
+def test_judge_verdicts_are_parsed_defensively():
+    from rag.judge import parse_verdict
+
+    raw = '<think>{"correct": "no"}</think> {"correct": "Si", "faithful": "no", "reason": "ok"}'
+    assert parse_verdict(raw) == {"correct": "sí", "faithful": "no", "reason": "ok"}
+    assert parse_verdict("sin json")["correct"] == "?"
+
+
+def test_low_reranker_score_answers_not_found_without_generating():
+    from rag.generate import RagPipeline
+
+    pipeline = RagPipeline(rerank=True, translate_query=False)
+    pipeline.min_score = 0.975
+    calls = []
+    pipeline.generate = lambda prompt, thinking=None: calls.append(prompt) or "Respuesta [F1]."
+    pipeline.retrieve = lambda q, k, r: [Hit(_chunk("d-0001", "texto"), 0.42)]
+    assert pipeline.answer("¿Capital de Australia?").answer == NOT_FOUND and not calls
+    pipeline.retrieve = lambda q, k, r: [Hit(_chunk("d-0001", "texto"), 0.99)]
+    response = pipeline.answer("¿Qué dice el artículo 5?")
+    assert response.citations == ["d-0001"] and len(calls) == 1
