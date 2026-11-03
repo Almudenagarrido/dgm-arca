@@ -17,10 +17,10 @@ def test_health_lists_all_phases():
 
 
 def test_pending_phase_returns_501_with_phase_name():
-    # /rag is still pending; implemented phases load a model, which unit tests must not do.
-    response = client.post("/rag", json={"question": "¿Qué dice el artículo 5?"})
+    # /agent is still pending; implemented phases load a model, which unit tests must not do.
+    response = client.post("/agent", json={"task": "Clasifica un chatbot"})
     if response.status_code == 501:
-        assert response.json()["detail"]["phase"] == "rag"
+        assert response.json()["detail"]["phase"] == "agent"
     else:
         assert response.status_code == 200
 

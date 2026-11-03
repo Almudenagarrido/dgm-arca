@@ -789,3 +789,135 @@ fragmento del XHTML como fixture y un bucle con salidas del modelo grabadas.
 
 Ficheros: `reports/phase2_eval.json` (v3, la configuración final), `phase2_eval_v1.json`,
 `phase2_eval_v2.json`, `phase2_eval_{slides,thinking,qwen3_1.7b,no_tools}.json`.
+
+## Fase 3 · RAG
+
+### 2026-11-03 · Fase 3 · Corpus oficial, dos chunkings, tres retrievers y respuestas con citas
+
+**Corpus** (`rag/download_corpus.py`, fuentes y licencias en `rag/CORPUS.md`): 149 documentos y
+1,76 M de caracteres, todos oficiales.
+
+- El Reglamento en español desde CELLAR: un fichero por cada artículo (113) y anexo (13), y los 180
+  considerandos en 18 ficheros.
+- Las dos directrices de la Comisión en español: prácticas prohibidas (164 páginas) y definición de
+  sistema de IA (15 páginas). Había que buscar la versión española entre las 24 traducciones del
+  newsroom (documentos 118659 y 118640).
+- El borrador de directrices de alto riesgo de mayo de 2026, que solo existe en inglés (167
+  páginas).
+
+Dos defectos que encontramos al leer el corpus: el exponente de `10^25` FLOPs (Art. 51) llegaba como
+«1025», porque el DOUE usa `<span class="oj-super">`, y pypdf parte palabras en las directrices
+(«recom endaciones»).
+
+**Conjunto dorado** (`rag/gold/gold.jsonl`): 46 preguntas con respuesta y 5 sin respuesta en el
+corpus. El reparto es 32 sobre artículos y anexos, 3 sobre considerandos, 7 sobre las directrices
+en español y 4 sobre el borrador en inglés (preguntadas en español: recuperación entre idiomas).
+**Es un borrador que redactó Claude** leyendo el corpus, igual que la auditoría de la fase 1. El
+equipo tiene que revisarlo y reescribir lo que haga falta, porque la rúbrica pide que lo escriba el
+equipo. Las preguntas no guardan ids de fragmento, que cambian con cada chunking: guardan la
+**evidencia**, es decir, el fichero y una cita literal. Un fragmento es relevante si contiene la cita
+o sus primeros o últimos 60 caracteres, por si un corte la parte. Así el mismo conjunto evalúa
+cualquier chunking. Las 46 citas se comprobaron automáticamente contra el corpus. Hay 2 preguntas
+con dos pasajes igual de válidos (q06: Art. 6.4 y Art. 49.2; q26: los apartados 1 y 2 del Art. 49
+repiten la frase).
+
+**Recuperación** (`rag/evaluate.py` → `reports/phase3_eval.json`, Qwen3-Embedding-0.6B, top-k = 5,
+n = 46; una pregunta son 2,2 puntos):
+
+| Chunking | Fragmentos | Media (car.) | BM25 hit@5 / MRR | Denso hit@5 / MRR | λ* | Híbrido hit@1 / hit@5 / MRR |
+|---|---|---|---|---|---|---|
+| recursivo (800/100) | 3262 | 542 | 0,41 / 0,22 | 0,46 / 0,36 | 0,3 | 0,33 / 0,46 / 0,40 |
+| semántico 0,50 | 5602 | 312 | 0,39 / 0,26 | 0,48 / 0,39 | 0,4 | 0,35 / 0,52 / 0,42 |
+| semántico 0,60 | 4333 | 404 | 0,39 / 0,24 | 0,48 / 0,41 | 0,3 | 0,33 / 0,59 / 0,43 |
+| semántico 0,70 | 3261 | 537 | 0,46 / 0,27 | 0,52 / 0,43 | 0,3 | 0,35 / 0,56 / 0,45 |
+| semántico 0,80 | 2076 | 844 | 0,39 / 0,24 | 0,54 / 0,42 | 0,2 | 0,35 / 0,63 / 0,46 |
+| recursivo + título | 3262 | 611 | 0,41 / 0,27 | 0,56 / 0,41 | 0,3 | 0,33 / 0,56 / 0,44 |
+| semántico 0,50 + título | 5602 | 388 | 0,46 / 0,30 | 0,59 / 0,48 | 0,3 | 0,43 / 0,56 / 0,50 |
+| semántico 0,60 + título | 4333 | 480 | 0,50 / 0,28 | 0,61 / 0,47 | 0,3 | 0,39 / 0,63 / 0,50 |
+| **semántico 0,70 + título** | 3261 | 612 | 0,50 / 0,33 | 0,61 / 0,47 | **0,3** | **0,43 / 0,63 / 0,52** |
+| semántico 0,80 + título | 2076 | 914 | 0,48 / 0,29 | 0,56 / 0,42 | 0,3 | 0,37 / 0,59 / 0,47 |
+
+- **Umbral semántico** (`reports/phase3_sentence_distances.png`, Art. 5): la distancia mediana entre
+  frases consecutivas del corpus es 0,55 (p25 = 0,41, p75 = 0,71). Con el 0,25 por defecto, casi
+  cada frase sería un fragmento. En el Art. 5 se ve bien: las letras de la misma prohibición quedan
+  por debajo de 0,5 y los saltos entre prohibiciones superan 0,7. Por eso 0,70 corta donde cambia
+  el tema y da fragmentos del mismo tamaño medio que el recursivo (3261 frente a 3262). Así la
+  comparación es justa: **a igual tamaño, el semántico gana** (MRR híbrido 0,45 frente a 0,40),
+  porque corta entre ideas y no a mitad de una enumeración. Con 0,80 los fragmentos son más largos
+  y el MRR deja de subir.
+- **El título del documento delante de cada fragmento** («Artículo 14. Supervisión humana — …») es
+  la mejora más grande y más barata: entre +0,04 y +0,08 de MRR en todas las variantes. Un apartado
+  del Art. 14 no dice que es del Art. 14 ni de qué trata el artículo.
+- **Por qué el denso gana a BM25:** las preguntas parafrasean («¿cuántas personas tienen que
+  confirmar…?» frente a «al menos dos personas físicas… han verificado y confirmado»). Además, 4
+  preguntas son en español sobre texto en inglés, y BM25 ahí no tiene ninguna opción. BM25 sigue
+  aportando: el híbrido mejora al denso solo en todos los chunkings.
+- **λ:** el óptimo es 0,3 en 8 de las 10 variantes (`reports/phase3_lambda_sweep.png`). La curva es
+  plana entre 0,2 y 0,4 y cae deprisa a partir de 0,5. Con el min-max, el último resultado de cada
+  lista vale 0, lo mismo que un fragmento que esa lista no recuperó, y eso penaliza las listas de
+  BM25 con puntuaciones muy juntas.
+- **Por qué falla** (análisis hecho con el semántico 0,70 *sin* título, que deja 20 preguntas sin
+  el fragmento relevante entre los 5 primeros; la configuración final deja 17): en 9 de ellas los primeros resultados son de las directrices de prácticas
+  prohibidas, que comentan el mismo artículo con más palabras que el propio artículo. Por ejemplo,
+  en q08 (verificación por dos personas, Art. 14.5) los tres primeros son de las directrices. Solo
+  en un caso (q21) el fragmento recuperado de las directrices contenía la cita literal y el
+  conjunto dorado lo contaba como fallo. El problema no es el conjunto dorado: es que el comentario
+  le gana a la norma. Lo siguiente que probaríamos es un reranker o filtrar por tipo de fuente
+  cuando la pregunta pide «qué dice el reglamento».
+
+**Instrucción de la consulta** (sobre `semántico 0,50 + título`, el mejor denso):
+
+| Instrucción | hit@1 | hit@5 | MRR |
+|---|---|---|---|
+| por defecto («Given a user question, retrieve the passages… that answer it») | **0,39** | 0,59 | **0,48** |
+| del dominio en español («Dada una pregunta sobre el Reglamento… recupera el pasaje…») | 0,17 | 0,61 | 0,36 |
+| del dominio en inglés («…retrieve the article, recital or guideline paragraph…») | 0,33 | 0,54 | 0,43 |
+| «mismo tema» | 0,33 | 0,61 | 0,46 |
+| sin instrucción (consulta embebida como pasaje) | 0,30 | 0,61 | 0,44 |
+
+Fue la mayor sorpresa: la instrucción del dominio en español **hunde el hit@1 de 0,39 a 0,17** y
+casi no cambia el hit@5. Pone delante los fragmentos que hablan de «el reglamento» y «las
+directrices» en general (preámbulos, considerandos introductorios) frente al pasaje concreto. La
+instrucción genérica en inglés, que es como se entrenó Qwen3-Embedding, es la mejor. Más
+especificidad no es mejor si nombra el corpus en lugar de la tarea.
+
+**Generación** (`rag/evaluate_answers.py`, híbrido, top-k = 5, Qwen3-4B en greedy):
+
+| | RAG | Sin recuperación (closed book) |
+|---|---|---|
+| Respuestas con el dato clave (n = 46) | **63 %** | 13 % |
+| Respuestas con al menos una cita | 91 % | — |
+| Respuestas sin ids inventados (n = 51) | 94 % | — |
+| Cita un fragmento relevante | 59 % | — |
+| El fragmento relevante estaba entre los recuperados | 63 % | — |
+| Negativas en preguntas con respuesta | 9 % | 41 % |
+| «No lo sé» en las 5 sin respuesta | 3/5 | 5/5 |
+
+- **La generación está limitada por la recuperación:** el 63 % de respuestas correctas coincide con
+  el 63 % de veces que se recuperó el pasaje. Cuando el pasaje está, el modelo casi siempre lo usa.
+- **Sin recuperación** se niega en el 41 % de las preguntas y, cuando contesta, inventa definiciones
+  («la ultrasuplantación es la representación falsa de una persona…»). El 5/5 en las preguntas sin
+  respuesta no tiene mérito: se niega a casi todo.
+- **Citas inventadas** (3 respuestas): cita `-0010` cuando solo recuperó `-0009` del mismo
+  documento, es decir, se inventa el id del fragmento vecino. `to_response` las descarta (solo pasan
+  las que existen) y `invalid_citations` las registra.
+- **Lee el pasaje al revés** (q05): recupera el fragmento del borrador en inglés que dice «none of the
+  exceptions… apply when the system performs profiling» y responde «Sí, puede acogerse a las
+  excepciones». Es el fallo más grave, porque la respuesta cita una fuente real.
+- **Rodeos en lugar de «No lo sé»** (q47, q48): sobre la multa del RGPD responde «no se especifica
+  directamente en los documentos… sin embargo, se menciona…» y rellena con lo que encuentra. Está
+  medio bien, porque reconoce el límite, pero no usa la frase fija.
+- La métrica del dato clave es conservadora. En q16 el modelo escribe `$10^{25}$` en LaTeX y no
+  cuenta; en q17 y q18 parafrasea bien y cita el fragmento correcto sin usar la palabra clave.
+
+**Endpoint**: `/health` marca `rag: ready`. `POST /rag` funciona con `dense`, `bm25` e `hybrid`, y
+las puntuaciones tienen sentido: híbrido en [0, 1], denso como coseno y BM25 sin acotar. En la
+pregunta de las 24 horas, el híbrido y el denso aciertan con cita, y BM25 responde «No lo sé»
+porque sus 5 fragmentos no la contienen. Ante «¿Cuál es la capital de Australia?» responde «No lo
+sé». El chunking semántico embebe 9.288 frases (~190 s), así que los fragmentos se cachean en
+`rag/index/chunks-<chunking>.json` con un hash del corpus: el segundo arranque tarda 4 s. Qwen3-4B
+se comparte entre `/tools` y `/rag` (`rlm.gpu.shared_causal_lm`): dos copias más el modelo de
+embeddings no caben en 16 GB. 11 tests nuevos sin red ni GPU (`tests/test_rag_pipeline.py`).
+
+Ficheros: `reports/phase3_eval.json`, `phase3_answers.json`, `phase3_answers_closed_book.json`,
+`phase3_sentence_distances.png`, `phase3_lambda_sweep.png`.

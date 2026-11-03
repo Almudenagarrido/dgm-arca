@@ -75,10 +75,13 @@ leyendo vuestro corpus, y con alguna que el corpus no puede responder, y miraré
 
 | Fichero | Estado | Qué es |
 |---|---|---|
+| `download_corpus.py` | hecho | Descarga el reglamento (CELLAR) y las directrices (PDF) y los deja en `corpus/` como Markdown |
 | `ingest.py` | hecho | Lee el corpus (PDF, MD, TXT, HTML) como `Document` con id y fuente |
-| `chunking.py` | hecho + tu turno | Recursivo hecho; semántico vuestro; estadísticas para la tabla |
-| `embed.py` | hecho | Qwen3-Embedding con instrucción para consultas |
-| `retriever.py` | hecho + tu turno | BM25 hecho; denso e híbrido vuestros |
-| `generate.py` | tu turno | Prompt aumentado, generación, citas; detrás de `/rag` |
-| `evaluate.py` | hecho + tu turno | Recall@k y MRR hechos; montar y comparar retrievers vuestro |
-| `corpus/`, `gold/`, `index/` | vuestros | Documentos, conjunto dorado, índice persistido |
+| `chunking.py` | hecho | Recursivo y semántico (distancia entre frases consecutivas con umbral); estadísticas |
+| `embed.py` | hecho | Qwen3-Embedding-0.6B con instrucción para las consultas |
+| `retriever.py` | hecho | BM25, denso (matriz NumPy persistida en `index/`) e híbrido con min-max y λ |
+| `generate.py` | hecho | Prompt aumentado con ids, generación con Qwen3-4B, citas y «No lo sé»; detrás de `/rag` |
+| `evaluate.py` | hecho | Hit@k, Recall@k y MRR por chunking y retriever, barrido de λ y de instrucciones, figuras |
+| `evaluate_answers.py` | hecho | Citas válidas y relevantes, dato clave, negativas correctas; comparación sin RAG |
+| `gold/gold.jsonl` | borrador | 51 preguntas (46 con evidencia literal + 5 sin respuesta en el corpus) |
+| `CORPUS.md` | hecho | Fuentes, licencias y calidad del texto |

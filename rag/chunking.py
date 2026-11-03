@@ -1,9 +1,8 @@
 """Data indexing, step 2: chunking.
 
-Two strategies from class. ``recursive_chunks`` is the default of most RAG systems and is
-implemented for you with LangChain's splitter. ``semantic_chunks`` is yours to write: the
-algorithm is in the docstring and in the slides. Compare both with ``rag/evaluate.py``:
-number of chunks, average length, and Recall@k on your gold set.
+Two strategies from class. ``recursive_chunks`` is the default of most RAG systems (LangChain's
+splitter). ``semantic_chunks`` groups consecutive sentences while their embeddings stay close.
+``rag/evaluate.py`` compares both: number of chunks, length, and Recall@k on the gold set.
 """
 
 from __future__ import annotations
@@ -49,8 +48,18 @@ def recursive_chunks(
 
 def split_sentences(text: str) -> list[str]:
     """Cheap sentence splitter; good enough to feed the semantic chunker."""
-    sentences = re.split(r"(?<=[.!?])\s+|\n{2,}", text)
+    # Line breaks also end a unit: the corpus puts each lettered point of an article on its
+    # own line, and those points end in ";" rather than ".".
+    sentences = re.split(r"(?<=[.!?])\s+|\n+", text)
     return [s.strip() for s in sentences if s and s.strip()]
+
+
+def sentence_distances(sentences: list[str], embed_fn) -> list[float]:
+    """Cosine distance 1 - e_i · e_{i+1} between consecutive sentences (rows are normalised)."""
+    if len(sentences) < 2:
+        return []
+    vectors = embed_fn(sentences)
+    return [float(1.0 - vectors[i] @ vectors[i + 1]) for i in range(len(sentences) - 1)]
 
 
 def semantic_chunks(
@@ -59,7 +68,7 @@ def semantic_chunks(
     distance_threshold: float = 0.25,
     max_chunk_chars: int = 1500,
 ) -> list[Chunk]:
-    """Tu turno: group consecutive sentences while their embeddings stay close.
+    """Group consecutive sentences while their embeddings stay close.
 
     ``embed_fn(list[str]) -> array of shape (n, d)`` with L2-normalised rows (see
     ``rag/embed.py``). The algorithm from the slides:
@@ -72,10 +81,27 @@ def semantic_chunks(
     6. Otherwise close the chunk and start a new one at s_{i+1}.
     7. Also close a chunk when it would exceed ``max_chunk_chars``.
 
-    Plot the distances for one document with the threshold line (as in the slides) and
-    include it in your report: it is the best way to justify the threshold you chose.
+    Chunks never cross documents. A single sentence longer than ``max_chunk_chars`` becomes a
+    chunk of its own rather than being cut mid-sentence.
     """
-    raise NotImplementedError
+    chunks: list[Chunk] = []
+    for doc in documents:
+        sentences = split_sentences(doc.text)
+        if not sentences:
+            continue
+        distances = sentence_distances(sentences, embed_fn)
+        pieces: list[str] = [sentences[0]]
+        for sentence, distance in zip(sentences[1:], distances, strict=True):
+            too_long = len(pieces[-1]) + 1 + len(sentence) > max_chunk_chars
+            if distance <= distance_threshold and not too_long:
+                pieces[-1] = f"{pieces[-1]} {sentence}"
+            else:
+                pieces.append(sentence)
+        for i, piece in enumerate(pieces):
+            chunks.append(
+                Chunk(id=f"{doc.id}-{i:04d}", doc_id=doc.id, source=doc.source, text=piece, index=i)
+            )
+    return chunks
 
 
 def describe(chunks: list[Chunk]) -> dict[str, float]:
@@ -87,3 +113,24 @@ def describe(chunks: list[Chunk]) -> dict[str, float]:
         "min_chars": min(lengths, default=0),
         "max_chars": max(lengths, default=0),
     }
+
+
+def document_title(doc: Document) -> str:
+    """The first Markdown heading of a document, or its file name."""
+    first = doc.text.lstrip().split("\n", 1)[0]
+    return first.lstrip("# ").strip() if first.startswith("#") else doc.source
+
+
+def with_titles(chunks: list[Chunk], documents: list[Document]) -> list[Chunk]:
+    """Prefix every chunk with its document title ("Artículo 14. Supervisión humana — ...").
+
+    A paragraph of Art. 14 does not say that it belongs to Art. 14 or that the article is about
+    human oversight; the title gives both BM25 and the embedding that context. Ids stay the same.
+    """
+    titles = {d.id: document_title(d) for d in documents}
+    out = []
+    for c in chunks:
+        title = titles[c.doc_id]
+        text = c.text if c.text.lstrip("# ").startswith(title) else f"{title} — {c.text}"
+        out.append(Chunk(id=c.id, doc_id=c.doc_id, source=c.source, text=text, index=c.index))
+    return out

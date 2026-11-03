@@ -116,19 +116,10 @@ class ToolLoop:
         self.tokenizer = None
 
     def load(self) -> None:
-        """Tokenizer and model, bf16 on GPU."""
-        import torch
-        from transformers import AutoModelForCausalLM, AutoTokenizer
+        """Tokenizer and model, bf16 on GPU (shared with the other phases that use it)."""
+        from rlm.gpu import shared_causal_lm
 
-        from rlm.gpu import disable_cudnn_attention
-
-        disable_cudnn_attention()
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        dtype = torch.bfloat16 if device == "cuda" else torch.float32
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_id, dtype=dtype, device_map=device
-        ).eval()
+        self.tokenizer, self.model = shared_causal_lm(self.model_id)
 
     def render(self, messages: list[dict]) -> str:
         """The exact prompt text the model sees (useful to explain what the template does)."""

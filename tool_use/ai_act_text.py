@@ -61,6 +61,7 @@ class Document:
     article_titles: dict[str, str]
     annexes: dict[str, Unit]
     annex_titles: dict[str, str]
+    recitals: dict[str, str] = field(default_factory=dict)  # "1" -> text of recital (1)
 
 
 # ---------------------------------------------------------------------------- fetching
@@ -165,10 +166,18 @@ def _annex(div: ET.Element) -> tuple[Unit, str]:
 
 def parse(xhtml: bytes, language: str = "es") -> Document:
     root = ET.fromstring(xhtml)
-    articles, article_titles, annexes, annex_titles = {}, {}, {}, {}
+    # Superscripts carry meaning (10^25 FLOPs in Art. 51); itertext would glue them as "1025".
+    # The Official Journal marks them as <span class="oj-super">; "n.º" uses it for a letter.
+    for span in root.iter(f"{XHTML}span"):
+        if "oj-super" in span.get("class", "") and (span.text or "").strip().isdigit():
+            span.text = f"^{span.text.strip()}"
+    articles, article_titles, annexes, annex_titles, recitals = {}, {}, {}, {}, {}
     for div in root.iter(f"{XHTML}div"):
         ident = div.get("id", "")
-        if re.fullmatch(r"art_\d+", ident):
+        if re.fullmatch(r"rct_\d+", ident):
+            _, items = _items(div)
+            recitals[ident.removeprefix("rct_")] = items[0].text if items else _text(div)
+        elif re.fullmatch(r"art_\d+", ident):
             unit, title = _article(div)
             articles[unit.label], article_titles[unit.label] = unit, title
         elif re.fullmatch(r"anx_[IVX]+", ident):
@@ -176,7 +185,7 @@ def parse(xhtml: bytes, language: str = "es") -> Document:
             annexes[unit.label], annex_titles[unit.label] = unit, title
     if not articles:
         raise ValueError("no articles found: the CELLAR document format may have changed")
-    return Document(language, articles, article_titles, annexes, annex_titles)
+    return Document(language, articles, article_titles, annexes, annex_titles, recitals)
 
 
 @lru_cache(maxsize=2)
