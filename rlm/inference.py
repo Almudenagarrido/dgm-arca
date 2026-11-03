@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from api.schemas import ReasoningResponse, VerifierVerdict
-from rlm.data import build_prompt
+from rlm.data import AIACT_SYSTEM_PROMPT, R1_ZERO_SYSTEM_PROMPT, build_prompt
 from rlm.rewards import extract_answer, has_valid_format
 from rlm.verifier import AIActVerifier, ExactMatchVerifier, NumericVerifier, Verifier
 
@@ -90,6 +90,9 @@ class ReasoningModel:
         from peft import PeftModel
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
+        from rlm.gpu import disable_cudnn_attention
+
+        disable_cudnn_attention()
         device = "cuda" if torch.cuda.is_available() else "cpu"
         dtype = torch.bfloat16 if device == "cuda" else torch.float32
         self.tokenizer = AutoTokenizer.from_pretrained(self.base_model)
@@ -105,8 +108,10 @@ class ReasoningModel:
         """Return the raw completion and the number of generated tokens."""
         import torch
 
+        # The AI Act models are trained with the legal reference card in the system prompt.
+        system = AIACT_SYSTEM_PROMPT if self.verifier_name == "aiact" else R1_ZERO_SYSTEM_PROMPT
         text = self.tokenizer.apply_chat_template(
-            build_prompt(question), tokenize=False, add_generation_prompt=True
+            build_prompt(question, system), tokenize=False, add_generation_prompt=True
         )
         inputs = self.tokenizer(text, return_tensors="pt").to(self.model.device)
         with torch.no_grad():

@@ -805,6 +805,131 @@ def classify_components(profiles: Sequence[SystemProfile | dict]) -> Classificat
     )
 
 
+# ---------------------------------------------------------------------------- reference card
+
+_ARTICLE_5 = {
+    "a": "técnicas subliminales, manipuladoras o engañosas que distorsionan sustancialmente el "
+    "comportamiento y causan o pueden causar un perjuicio significativo",
+    "b": "explotar vulnerabilidades por edad, discapacidad o situación social o económica, con "
+    "distorsión sustancial del comportamiento y perjuicio significativo",
+    "c": "puntuación social que provoca un trato perjudicial en contextos no relacionados o "
+    "desproporcionado",
+    "d": "predecir que una persona cometerá un delito basándose únicamente en perfiles o rasgos "
+    "de personalidad (no si apoya una evaluación humana basada en hechos objetivos)",
+    "e": "crear o ampliar bases de reconocimiento facial con extracción no selectiva de imágenes "
+    "de internet o CCTV",
+    "f": "reconocimiento de emociones en el lugar de trabajo o en centros educativos (salvo "
+    "motivos médicos o de seguridad)",
+    "g": "categorización biométrica para deducir raza, opiniones políticas, afiliación sindical, "
+    "religión o vida u orientación sexual (salvo etiquetado de datos o ámbito policial)",
+    "h": "identificación biométrica remota en tiempo real en espacios públicos con fines "
+    "policiales, salvo búsqueda de víctimas, amenaza inminente o sospechoso de delito grave CON "
+    "autorización previa (entonces es alto riesgo, Anexo III.1.a)",
+}
+
+_ARTICLE_50 = {
+    "1": "interactúa directamente con personas sin que sea obvio que es una IA: chatbots, "
+    "asistentes de voz o telefónicos, también cuando son una función más de otro sistema",
+    "2": "genera contenido sintético de audio, imagen, vídeo o texto, por trivial que sea "
+    "(descripciones de productos, resúmenes, imágenes) (no si solo asiste a la edición sin "
+    "alterar sustancialmente el contenido)",
+    "3": "reconocimiento de emociones o categorización biométrica no prohibidos, incluida la "
+    "categorización por rasgos no sensibles (gafas, barba, edad aparente)",
+    "4": "ultrasuplantaciones (deep fakes) o textos sobre asuntos de interés público publicados "
+    "sin revisión humana; también son contenido sintético, así que la cita principal es Art. 50.2",
+}
+
+# Recital 53 gives the examples for each Art. 6.3 letter.
+_ARTICLE_6_3_EXAMPLES = {
+    "a": "comprobar que una solicitud está completa, extraer o estructurar datos, clasificar o "
+    "deduplicar documentos",
+    "b": "mejorar la redacción o el formato de un documento que una persona ya ha terminado, "
+    "sin cambiar su contenido ni el resultado",
+    "c": "revisar a posteriori decisiones humanas ya tomadas para señalar incoherencias o "
+    "desviaciones, sin sustituirlas",
+    "d": "trabajo previo a la evaluación humana: anonimizar, traducir, indexar, buscar o "
+    "extraer información que la persona usará después para decidir",
+}
+
+_PROCEDURE = (
+    "1. Art. 5: si se cumple una prohibición con todas sus condiciones → prohibido, y ya no "
+    "se sigue. 5.1.a es una técnica que manipula a cualquiera; 5.1.b, aprovecharse de la "
+    "vulnerabilidad de un grupo concreto (menores, personas mayores, con discapacidad o en una "
+    "situación social o económica difícil). Las excepciones exigen todos sus requisitos: la "
+    "identificación biométrica remota policial en tiempo real solo se permite para los tres "
+    "objetivos del 5.1.h Y con autorización previa; perseguir otros delitos (hurtos, "
+    "vandalismo, infracciones) o no tener autorización → prohibido (Art. 5.1.h). Un "
+    "fin legítimo o un despliegue público no salvan la puntuación social (5.1.c).",
+    "2. Alto riesgo: producto del Anexo I con evaluación por terceros (Art. 6.1), o caso de uso "
+    "del Anexo III (cita el punto, p. ej. Anexo III.4.a). El reconocimiento de emociones fuera del "
+    "trabajo y la educación es Anexo III.1.c (alto riesgo, no solo Art. 50.3).",
+    "3. Si el caso está en el Anexo III pero el sistema solo hace una tarea auxiliar que no "
+    "influye sustancialmente en la decisión y NO elabora perfiles de personas, se aplica la "
+    "excepción del Art. 6.3 y no es alto riesgo. Si elabora perfiles, la excepción no se aplica "
+    "nunca: alto_riesgo con el punto del Anexo III.",
+    "4. Si no es prohibido ni alto riesgo, revisa el Art. 50, que solo se aplica si el texto lo "
+    "dice expresamente: conversa con personas (chat, voz), genera contenido, reconoce "
+    "emociones o categoriza por rasgos biométricos → riesgo_limitado con la cita del apartado "
+    "que aplique (p. ej. Art. 50.1). "
+    "Si además se aplica la excepción del 6.3, gana el Art. 50 y se cita ese apartado. "
+    "Procesar datos de "
+    "personas o ayudar a un empleado no es «interactuar» en el sentido del 50.1.",
+    "5. Si nada de lo anterior aplica → riesgo_minimo, con dos casos:",
+    "   a) Se aplicó la excepción del 6.3 → riesgo_minimo con la letra que aplique (p. ej. "
+    "riesgo_minimo (Art. 6.3.c)). La letra del 6.3 ES el "
+    "artículo que fundamenta el riesgo mínimo: omitirla es un error. La excepción nunca da "
+    "riesgo_limitado.",
+    "   b) El sistema no encaja en ningún punto del Anexo III → riesgo_minimo, sin cita. Esto "
+    "incluye los casos que el propio Anexo III excluye (verificación biométrica 1:1, detección "
+    "de fraude, verificación de documentos de viaje, logística de campañas): no es el 6.3, "
+    "porque el 6.3 solo existe para sistemas que SÍ encajan en un punto del Anexo III. Citar un "
+    "artículo que no aplica es un error.",
+)
+
+
+def reference_card() -> str:
+    """Compact legal reference with every citation the engine can produce, in canonical form.
+
+    It goes into the system prompt (``rlm.data.AIACT_SYSTEM_PROMPT``) for the teacher, the
+    student and evaluation alike, so the task is *applying* the Regulation, not recalling its
+    numbering. The article lists come from the engine's tables, so they cannot drift from it;
+    the procedure follows the order in which ``classify`` applies the rules.
+    """
+    lines = [
+        "Referencia del Reglamento (UE) 2024/1689. Precedencia: prohibido > alto_riesgo > "
+        "riesgo_limitado > riesgo_minimo; cita el artículo de la etiqueta final.",
+        "",
+        "Procedimiento:",
+        *_PROCEDURE,
+        "",
+        "prohibido — Art. 5.1 (prácticas prohibidas):",
+        *(f"- Art. 5.1.{k}: {v}" for k, v in _ARTICLE_5.items()),
+        "",
+        "alto_riesgo — Art. 6.1: componente de seguridad o producto del Anexo I (máquinas, "
+        "juguetes, productos sanitarios, ascensores, vehículos, aviación…) que requiere "
+        "evaluación de la conformidad por terceros.",
+        "alto_riesgo — Art. 6.2 + Anexo III (cita el punto del anexo):",
+        *(f"- Anexo III.{k}: {v}" for k, v in ANNEX_III.items()),
+        "Excluidos del Anexo III: verificación biométrica 1:1 (confirmar que alguien es quien "
+        "dice ser; tampoco es Art. 50.3), detección de fraude (5.b), verificación de documentos "
+        "de viaje (7.d), logística de campañas (8.b).",
+        "",
+        "Excepción Art. 6.3 (resultado: riesgo_minimo con la letra, p. ej. riesgo_minimo "
+        "(Art. 6.3.a); salvo que aplique el Art. 50):",
+        *(
+            f"- Art. 6.3.{letter}: {text}. Ej.: {_ARTICLE_6_3_EXAMPLES[letter]}"
+            for letter, text in DEROGATIONS_6_3.values()
+        ),
+        "",
+        "riesgo_limitado — Art. 50 (transparencia):",
+        *(f"- Art. 50.{k}: {v}" for k, v in _ARTICLE_50.items()),
+        "",
+        "Formato de la cita: exactamente «Art. 5.1.c», «Art. 6.1», «Art. 6.3.b», «Art. 50.2» o "
+        "«Anexo III.4.a». Una sola etiqueta y una sola cita.",
+    ]
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------- citations
 
 _SUB = r"(?:\d{1,2}|[a-h]|iii|ii|iv|i)"

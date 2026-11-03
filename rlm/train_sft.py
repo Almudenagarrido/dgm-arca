@@ -22,7 +22,7 @@ from pathlib import Path
 
 from datasets import load_dataset
 
-from rlm.data import build_prompt
+from rlm.data import AIACT_SYSTEM_PROMPT, build_prompt
 
 
 def load_sft_dataset(path: str | Path):
@@ -36,7 +36,7 @@ def load_sft_dataset(path: str | Path):
         dataset = dataset.filter(lambda ex: bool(ex["verified"]))
     return dataset.map(
         lambda ex: {
-            "prompt": build_prompt(ex["question"]),
+            "prompt": build_prompt(ex["question"], AIACT_SYSTEM_PROMPT),
             "completion": [{"role": "assistant", "content": ex["trace"]}],
         },
         remove_columns=dataset.column_names,
@@ -48,6 +48,9 @@ def train(args: argparse.Namespace) -> None:
     from peft import LoraConfig
     from trl import SFTConfig, SFTTrainer
 
+    from rlm.gpu import disable_cudnn_attention
+
+    disable_cudnn_attention()
     dataset = load_sft_dataset(args.data)
     print(f"{len(dataset)} verified traces loaded from {args.data}")
 

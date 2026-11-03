@@ -22,6 +22,8 @@ from pathlib import Path
 
 from datasets import Dataset, load_dataset
 
+from rlm.aiact_rules import reference_card
+
 R1_ZERO_SYSTEM_PROMPT = (
     "A conversation between User and Assistant. The user asks a question, and the "
     "Assistant solves it. The assistant first thinks about the reasoning process in the "
@@ -29,6 +31,11 @@ R1_ZERO_SYSTEM_PROMPT = (
     "are enclosed within <think> </think> and <answer> </answer> tags, respectively, "
     "i.e., <think> reasoning process here </think> <answer> answer here </answer>."
 )
+
+# The AI Act task adds a legal reference card to the R1-Zero prompt. Without it Qwen3-4B
+# gets the label right 58% of the time but invents the numbering ("Anexo III.12",
+# "Art. 5(1)"): 2/64 citations correct in the first distillation pilot (EXPERIMENTS.md).
+AIACT_SYSTEM_PROMPT = R1_ZERO_SYSTEM_PROMPT + "\n\n" + reference_card()
 
 
 def build_prompt(question: str, system_prompt: str = R1_ZERO_SYSTEM_PROMPT) -> list[dict]:
@@ -62,7 +69,7 @@ def load_gsm8k(split: str = "train", n_examples: int | None = None, seed: int = 
     )
 
 
-def load_domain_dataset(path: str | Path, system_prompt: str = R1_ZERO_SYSTEM_PROMPT) -> Dataset:
+def load_domain_dataset(path: str | Path, system_prompt: str = AIACT_SYSTEM_PROMPT) -> Dataset:
     """Load a JSONL file of your own problems. Each line: {"question": ..., "answer": ...}.
 
     Keep any extra fields you need for your verifier (unit tests, expected SQL result,

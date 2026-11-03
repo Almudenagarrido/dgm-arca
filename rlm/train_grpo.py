@@ -47,6 +47,9 @@ def train(args: argparse.Namespace) -> None:
     from peft import LoraConfig
     from trl import GRPOConfig, GRPOTrainer
 
+    from rlm.gpu import disable_cudnn_attention
+
+    disable_cudnn_attention()
     if args.data == "gsm8k":
         dataset = load_gsm8k("train", n_examples=args.n_examples, seed=args.seed)
     else:
@@ -58,6 +61,9 @@ def train(args: argparse.Namespace) -> None:
         output_dir=args.output,
         max_steps=args.steps,
         learning_rate=args.learning_rate,
+        # One prompt per micro-batch. TRL generates all ``grad_accum`` micro-batches of an
+        # optimizer step together (steps_per_generation defaults to grad_accum), which is what
+        # makes generation cheap; training them one at a time keeps the logits in memory.
         per_device_train_batch_size=args.num_generations,
         gradient_accumulation_steps=args.grad_accum,
         num_generations=args.num_generations,

@@ -16,6 +16,7 @@ from rlm.aiact_rules import (
     classify_components,
     extract_articles,
     normalize_article,
+    reference_card,
 )
 
 HARM = {"materially_distorts_behaviour": True, "significant_harm": True}
@@ -379,3 +380,17 @@ def test_article_match_score():
     assert article_match_score(None, "Art. 5.1.a") == 0.0
     assert article_match_score(None, None) == 1.0
     assert article_match_score("Art. 50.1", None) == 0.0
+
+
+def test_reference_card_lists_every_citation_in_the_datasets():
+    """The prompt's legal reference must cover every article a gold answer can cite."""
+    from pathlib import Path
+
+    card = set(extract_articles(reference_card()))
+    for name in ("train.jsonl", "test.jsonl", "test_ood.jsonl"):
+        path = Path("rlm/data") / name
+        if not path.exists():
+            continue
+        for line in path.read_text(encoding="utf-8").splitlines():
+            for article in json.loads(line)["valid_articles"]:
+                assert article in card, f"{article} ({path.name}) missing from reference_card"
