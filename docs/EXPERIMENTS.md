@@ -657,3 +657,135 @@ que el 8 %. Prueba con `uv run arca-api` (puerto 8077, porque el 8000 estaba ocu
 en 7, y las 8 respuestas traen `thinking` y `answer` separados. La que difiere (#61) es un caso
 límite: generar en lote con padding a la izquierda y en bf16 no da exactamente los mismos tokens
 que generar de uno en uno.
+
+## Fase 2 · Herramientas
+
+### 2026-11-03 · Fase 2 · Herramientas del AI Act, bucle a mano y banco de 34 casos
+
+**Herramientas** (`tool_use/tools.py`), una de cada tipo, como se prometió en la propuesta:
+
+- *Consulta externa*, `lookup_ai_act`: texto oficial del Reglamento. EUR-Lex responde 202 con el
+  cuerpo vacío a peticiones automáticas (es un desafío anti-bots), así que usamos la API CELLAR de
+  la Oficina de Publicaciones: `GET publications.europa.eu/resource/celex/32024R1689` con
+  `Accept: application/xhtml+xml` y `Accept-Language: spa`. Son 1,4 MB de XHTML bien formado en
+  ~0,4 s, con `id` para cada artículo, apartado y anexo. `tool_use/ai_act_text.py` lo convierte en
+  un árbol y resuelve referencias como `Art. 5.1.f`, `Art. 3.60` o `Anexo III.4.a` (113 artículos y
+  13 anexos). Se cachea por proceso: la primera llamada cuesta ~400 ms y las siguientes ~0 ms.
+- *Cálculo*, `classify_risk`: el motor de reglas de la fase 1. El modelo traduce el texto a hechos
+  y el motor aplica la precedencia legal. Su esquema tiene 42 campos, y se construye desde
+  `SystemProfile` con una descripción por campo; los `Literal` llegan como `enum`. También
+  `compute_max_fine` (Art. 99: el mayor de dos importes, o el menor si es pyme según el 99.6) y la
+  `calculator` de clase.
+- *Acción*, `write_assessment_report`: escribe un PDF en `reports/assessments/` con fpdf2. Se
+  registra con `requires_confirmation=True`. En la fase 2 se ejecuta (`ARCA_TOOLS_AUTO_CONFIRM=1`),
+  y con `0` el bucle no la ejecuta y le devuelve al modelo «requiere confirmación». La política
+  definitiva se decide en la fase 4.
+
+**Bucle** (`tool_use/executor.py`): son los cinco pasos sin ningún framework. Cada generación
+puede incluir varios `<tool_call>`, que se ejecutan en el mismo turno (llamadas paralelas). Los
+resultados vuelven como mensajes `tool`, y el bucle se repite hasta que el modelo responde sin
+pedir herramientas o se agota `max_turns` (multi-step). El JSON mal formado, las herramientas
+desconocidas y los argumentos inválidos vuelven al modelo como observación. Al llegar a
+`max_turns`, la respuesta sale con `max_turns_reached: true`, un campo opcional nuevo. Modelo:
+**Qwen3-4B**, con generación greedy y sin razonamiento. Elegimos el 4B en lugar del 1.7B de la
+plantilla por la comparación de abajo.
+
+**Banco** (`tool_use/bench/build_cases.py` → `cases.jsonl`, 34 casos): 10 de clasificación (la
+etiqueta esperada la calcula el propio motor), 6 de consulta, 4 de multas, 2 de informe, 1 de
+calculadora, 6 que no necesitan herramienta, 3 encadenados y 2 paralelos. `evaluate.py` mide:
+
+- *selección*: la primera llamada es la herramienta correcta;
+- *argumentos*: coinciden tras validar ambos lados con el esquema, de modo que los `false` por
+  defecto no cuentan y `artículo 5.1.f` vale lo mismo que `Art. 5.1.f`;
+- *cadena*: se llamaron todas las herramientas esperadas;
+- *etiqueta*: lo que devolvió `classify_risk`;
+- *respuesta*: la respuesta final contiene el dato verificable.
+
+| Configuración | Selección | Argumentos | Cadena (n=5) | Etiqueta (n=10) | Respuesta | Llamadas fallidas | s/caso |
+|---|---|---|---|---|---|---|---|
+| v1: descripciones iniciales | 94 % | 65 % | 60 % | 60 % | 71 % | 3 | 8,9 |
+| v2: + índice de artículos, errores accionables, instrucciones multi-step | 97 % | 88 % | 80 % | 80 % | 82 % | 1 | 6,8 |
+| **v3: + frase resuelta en `compute_max_fine`** | **97 %** | **88 %** | 80 % | **80 %** | 89 % | 1 | 6,9 |
+| v3 con el prompt de las diapositivas | 91 % | 74 % | 100 % | 80 % | 93 % | 4 | 8,7 |
+| v3 con razonamiento (thinking) | 97 % | 68 % | 100 % | 70 % | 86 % | 2 | 24,9 |
+| v3 con Qwen3-1.7B | 91 % | 53 % | 60 % | 10 % | 57 % | 5 | 6,1 |
+| Qwen3-4B **sin herramientas** | — | — | — | 0 % | 11 % | — | 10,4 |
+
+Son 34 casos, así que un caso son 3 puntos en las métricas globales y 20 en la de cadena: las
+diferencias pequeñas entre filas no son significativas. La métrica de respuesta se volvió a puntuar
+(`--rescore`) después de añadir variantes como «riesgo alto», sin regenerar las respuestas.
+
+**Qué cambió de v1 a v3 (las descripciones importan más de lo que parece):**
+
+1. *Mezcla de esquemas.* En v1 el modelo rellenó `classify_risk` con los campos de
+   `write_assessment_report` (`system_name`, `label`, `justification`…) en 3 de los 10 casos de
+   clasificación. Al principio Pydantic los **ignoraba en silencio**. Es peligroso: un hecho mal
+   escrito que se ignora convierte un alto riesgo en riesgo mínimo. Pasamos a `extra="forbid"`,
+   pero ante el error el modelo se lo explicaba al usuario en vez de reintentar. En v2 la
+   descripción dice «no hay argumento name, description ni label», el error lista los nombres
+   válidos y termina en «Fix the arguments and call the tool again», y el prompt de sistema pide
+   reintentar. Resultado: 0 casos de mezcla y argumentos del 65 al 88 %.
+2. *No sabe dónde está cada cosa.* Pedía `Art. 2` para la definición de «sistema de IA» (está en el
+   Art. 3.1) y `Art. 1` para las fechas de aplicación (están en el Art. 113). Un índice de dos
+   líneas en la descripción de `lookup_ai_act` lo arregla: consulta del 67 al 100 %.
+3. *Se para tras la primera herramienta.* La instrucción «haz todas las llamadas necesarias antes
+   de responder» sube la cadena del 60 al 80 %. El fallo que queda (multi-03) es que clasifica y
+   luego parafrasea el Art. 50.1 de memoria en vez de consultarlo.
+4. *Lee mal su propio resultado.* `compute_max_fine` devolvía bien el importe (1,5 M€ para la
+   startup), pero el modelo respondía «15 millones», que es el importe fijo. Con el colegio pasaba
+   igual: 35 M€ en lugar de 70 M€. En v3 el primer campo es una frase que ya da la respuesta
+   («Multa máxima: 1.500.000 EUR (Art. 99.4). Es la menor de…»), y la respuesta pasa del 82 al 89 %.
+   La forma de la salida es tan parte de la herramienta como su descripción.
+
+**Sin herramientas** el mismo modelo acierta el 11 % de las respuestas verificables y no acierta ni
+una clasificación. Se inventa el texto del Art. 50.1 («el Reglamento se aplica a cualquier sistema
+que pueda causar daño grave…»), da porcentajes de multa propios del RGPD (4 %, 10 %) y clasifica el
+scoring crediticio por el «artículo 5, apartado 1, letra a)». Este es el argumento central de la
+fase: en derecho, una respuesta fluida y segura sin fuente es peor que ninguna.
+
+**Plantilla nativa frente al prompt de las diapositivas.** Con `slides` el modelo encadena mejor
+(5/5) y su respuesta final es algo mejor, pero falla más en los argumentos (74 % frente a 88 %):
+añade hechos que no se dicen (7 campos de más en el caso de la policía) y en el caso del colegio
+empezó consultando el texto en lugar de clasificar. La plantilla nativa es el formato con el que
+Qwen3 aprendió a llamar a funciones y produce argumentos más limpios; la dejamos por defecto.
+
+**Thinking** no compensa aquí. Es 3,6 veces más lento y razona hacia hechos que el texto no dice:
+marca `workplace_or_education` en el filtro de CV y en el chatbot, y `infers_sensitive_attributes`
+en el detector de emociones. En el caso del ayuntamiento pierde `score_causes_detrimental_treatment`
+y la etiqueta. Encadena 5/5, pero los argumentos bajan al 68 %.
+
+**Qwen3-1.7B** elige bien la herramienta (91 %), pero no sabe traducir el texto a hechos: llama a
+`classify_risk` casi vacío y todo le sale riesgo mínimo (etiqueta 1/10). En la primera pasada
+escribía `"annex_iii_use_cases": null` y el esquema lo rechazaba. Recibía 36 errores seguidos y
+repetía la misma llamada hasta agotar los turnos. Aceptamos `null` como «sin valor» en todos los
+campos de `classify_risk` (las métricas del 1.7B en la tabla son de después del cambio). Lo difícil
+no es el formato de la llamada, sino la extracción de hechos, igual que vimos con el extractor del
+benchmark en la fase 1.
+
+**Fallos que quedan con v3** (en `reports/phase2_eval.json`):
+
+- *classify-06*: «genera imágenes para campañas publicitarias» → `annex_iii_use_cases: ["4.a"]`
+  (empleo). Confunde «campañas» con los «anuncios de empleo» del 4.a y no marca
+  `generates_synthetic_content`.
+- *classify-09*: «solo traduce los currículums antes de que el reclutador evalúe» → marca 4.a pero
+  no la excepción `preparatory_task`, así que sale alto riesgo. Es el mismo punto débil que el
+  modelo de la fase 1: la excepción del Art. 6.3.
+- *classify-08*: etiqueta correcta, pero añade `rbi_objective: victim_search` y
+  `predicts_individual_crime_risk` sin que el texto lo diga. Aquí no cambia el resultado, pero un
+  objetivo inventado puede convertir un «prohibido» en un «alto riesgo» autorizado.
+- *no_tool-06*: «¿Cuánto es 2 + 2?» → llama a la calculadora. Es el único caso de exceso en los 6
+  casos sin herramienta.
+- *Paralelo cuando debía ser secuencial* (probado en el endpoint, fuera del banco): «clasifícala y
+  dime la multa máxima» → emite las dos llamadas en el mismo turno. Como calcula la multa sin
+  conocer la etiqueta, elige `other_obligation`: 30 M€ en vez de 70 M€. En el banco (multi-01) la
+  frase «si está prohibida» fuerza el orden y sale bien. Las llamadas paralelas solo sirven cuando
+  las llamadas son independientes. Es un caso para la fase 4, donde el agente planifica.
+
+**Endpoint**: `/health` marca `tools: ready`; `POST /tools` devuelve `tool_calls` con el resultado
+real y la latencia. El test `test_pending_phase_returns_501_with_phase_name` usaba `/tools`, y al
+implementar la fase cargaba un modelo de 8 GB dentro de `pytest`. Ahora usa `/rag`, que sigue
+pendiente. Los 17 tests nuevos (`tests/test_ai_act_tools.py`) no necesitan red ni GPU: usan un
+fragmento del XHTML como fixture y un bucle con salidas del modelo grabadas.
+
+Ficheros: `reports/phase2_eval.json` (v3, la configuración final), `phase2_eval_v1.json`,
+`phase2_eval_v2.json`, `phase2_eval_{slides,thinking,qwen3_1.7b,no_tools}.json`.

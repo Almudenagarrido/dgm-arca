@@ -20,6 +20,7 @@ from __future__ import annotations
 import inspect
 import json
 import time
+import typing
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -58,8 +59,11 @@ class Tool:
 def _args_model_from_signature(fn: Callable[..., Any]) -> type[BaseModel]:
     """Build a Pydantic model whose fields mirror the function parameters."""
     fields: dict[str, Any] = {}
+    # get_type_hints resolves string annotations (modules with ``from __future__ import
+    # annotations``) against the function's globals, so Literal and friends survive.
+    hints = typing.get_type_hints(fn)
     for name, param in inspect.signature(fn).parameters.items():
-        annotation = param.annotation if param.annotation is not inspect.Parameter.empty else Any
+        annotation = hints.get(name, Any)
         default = ... if param.default is inspect.Parameter.empty else param.default
         fields[name] = (annotation, default)
     return create_model(f"{fn.__name__}_args", **fields)
@@ -121,7 +125,16 @@ class ToolRegistry:
                 latency_ms=1000 * (time.perf_counter() - started),
             )
         except ValidationError as exc:
-            error = f"invalid arguments: {exc.errors(include_url=False)}"
+            # Short, actionable message: what is wrong, which names exist, and to retry.
+            problems = "; ".join(
+                f"{'.'.join(map(str, e['loc'])) or 'arguments'}: {e['msg']}"
+                for e in exc.errors(include_url=False)[:8]
+            )
+            valid = sorted(self.tools[name].args_model.model_fields)
+            error = (
+                f"invalid arguments: {problems}. Valid argument names: {valid}. "
+                "Fix the arguments and call the tool again."
+            )
         except Exception as exc:  # noqa: BLE001 - the model must see what went wrong
             error = f"{type(exc).__name__}: {exc}"
         return ToolCallRecord(

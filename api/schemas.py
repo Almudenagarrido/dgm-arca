@@ -81,6 +81,8 @@ class ToolsResponse(BaseModel):
     tool_calls: list[ToolCallRecord]
     turns: int
     model: str = ""
+    # Optional extra: true when the loop stopped at max_turns before a final answer.
+    max_turns_reached: bool = False
 
 
 # ---------------------------------------------------------------------------- phase 3: /rag

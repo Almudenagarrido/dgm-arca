@@ -75,7 +75,19 @@ que requiera dos herramientas encadenadas, y miraré:
 |---|---|---|
 | `registry.py` | hecho | `@tool`, definiciones JSON Schema, validación y ejecución con captura de errores |
 | `parser.py` | hecho | Detecta `<think>` y uno o varios `<tool_call>` en la salida del modelo |
-| `tools.py` | ejemplo + tu turno | `get_weather` y `calculator`; las vuestras van aquí |
-| `executor.py` | tu turno | El flujo de cinco pasos; detrás de `/tools` |
-| `evaluate.py` | hecho | Métricas de selección y argumentos sobre el banco de pruebas |
-| `bench/` | vuestro | Casos de prueba (`example_cases.jsonl` muestra el formato) |
+| `ai_act_text.py` | hecho | Descarga el Reglamento de CELLAR y resuelve referencias (`Art. 5.1.f`, `Anexo III.4.a`) |
+| `tools.py` | hecho | `lookup_ai_act`, `classify_risk`, `compute_max_fine`, `write_assessment_report`, `calculator` |
+| `executor.py` | hecho | El flujo de cinco pasos; detrás de `/tools` |
+| `evaluate.py` | hecho | Selección, argumentos, cadenas, etiqueta y respuesta final; con y sin herramientas |
+| `bench/build_cases.py` | hecho | Genera `bench/cases.jsonl` (34 casos) con las etiquetas del motor de reglas |
+
+## Qué ve el modelo
+
+Con `ARCA_TOOLS_PROMPT=native` (por defecto) las definiciones no van pegadas a mano: se pasan a
+`apply_chat_template(..., tools=registry.definitions())`. La plantilla de Qwen3 añade al final del
+mensaje de sistema una sección `# Tools` con cada definición en JSON dentro de `<tools></tools>` y
+la instrucción de responder con `<tool_call>{"name": ..., "arguments": ...}</tool_call>`. Es el
+formato con el que se entrenó el modelo. Los resultados vuelven como mensajes con rol `tool`, y la
+plantilla los mete en `<tool_response>` dentro de un turno de usuario. Con `slides` se usa el prompt
+de las diapositivas (`SYSTEM_PROMPT_TEMPLATE`) con las definiciones como texto. La comparación entre
+las dos formas está en `docs/EXPERIMENTS.md`. Para ver el prompt exacto, usa `ToolLoop.render(messages)`.
