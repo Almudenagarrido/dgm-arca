@@ -527,3 +527,55 @@ epsilon 0,2, pesos de recompensa 0,5 / 1,0 / 0,5 (formato / etiqueta / cita). **
 lugar del 5e-6 por defecto: entrenamos un adaptador LoRA, que necesita una tasa ~10× mayor que
 el ajuste completo para el que está pensado ese valor por defecto. Salida:
 `rlm/weights/final_rlm_lora`, log en `logs/train_grpo.log`.
+
+### 2026-11-03 · Fase 1 · GRPO: reanudación en GPU de 16 GB y evaluación final
+
+**Corte y reanudación.** La ejecución del 30-10 se cortó en el paso 184/250 a las 22:00 (fin de la
+sesión). Esta sesión tiene una MIG 1g.18gb (16 GB) en lugar de la GPU grande del 30-10, y
+reanudar desde `checkpoint-175` con la misma configuración agotaba la memoria:
+
+1. En la generación: 32 respuestas a la vez (4 lotes × 8, `steps_per_generation = grad_accum`)
+   con un prompt de ~2600 tokens + 1536 nuevos no caben.
+2. Con `--steps-per-generation 1` (8 a la vez), en el backward: logits de 8 × 1536 × 152k.
+
+Solución (dos opciones nuevas en `train_grpo.py`): `--per-device-batch-size 2 --grad-accum 16
+--steps-per-generation 4`. Se genera un problema (8 respuestas) por tanda y el paso de optimización
+sigue siendo 4 problemas × 8 = 32 respuestas, así que el algoritmo es el mismo (beta 0, la política
+solo cambia en el paso de optimización). Resto de hiperparámetros idénticos al checkpoint. Pico de
+~7,5 GB; ~3 min por paso (frente a ~2-3 min en la GPU grande); los 75 pasos, 3 h 52 min.
+Salvedad: al cambiar la acumulación al reanudar, el orden de datos tras el paso 175 puede no
+coincidir exactamente con el de la ejecución original (algunos problemas repetidos u omitidos).
+
+**Curva de recompensa** (medias por tramo de 50 pasos; máximo 2,0):
+
+| Pasos | Recompensa | Etiqueta | Cita | Tokens | Truncadas |
+|---|---|---|---|---|---|
+| 1-50 | 1,64 | 0,80 | 0,73 | 699 | 5,2 % |
+| 51-100 | 1,74 | 0,85 | 0,79 | 617 | 1,9 % |
+| 101-150 | 1,77 | 0,87 | 0,82 | 610 | 1,8 % |
+| 151-200 | 1,77 | 0,88 | 0,81 | 596 | 2,7 % |
+| 201-250 | 1,80 | 0,89 | 0,84 | 584 | 2,0 % |
+
+**Evaluación** (`rlm/evaluate.py`, greedy, 1536 tokens máx., lotes de 16):
+
+| Modelo | Conjunto | Etiqueta | Etiqueta + cita | Formato | Tokens medios |
+|---|---|---|---|---|---|
+| SFT | test (200) | 71,0 % | 62,0 % | 81,5 % | 895 |
+| **GRPO** | test (200) | **82,5 %** | **79,0 %** | 92,0 % | 652 |
+| SFT | test OOD (100) | 67,0 % | 57,0 % | 81,0 % | 880 |
+| **GRPO** | test OOD (100) | **80,0 %** | **73,0 %** | 88,0 % | 681 |
+
+- Todos los fallos de formato siguen siendo truncamientos (16/200, 12/100). Sin ellos, etiqueta
+  89,7 % (test) y 90,9 % (OOD).
+- Por clase (test, etiqueta + cita, SFT → GRPO): limitado 66 → 92 %, alto riesgo 30 → 54 %,
+  mínimo 66 → 78 % (etiqueta sola 90 → 86 %), prohibido 86 → 92 %. En OOD el alto riesgo sigue
+  siendo lo peor: 4 → 24 %.
+- Lo que GRPO arregla: `derogation_chatbot` 38 → 83 % (deja de usar el 6.3 en lugar del 50.1),
+  `police_rbi_authorised` 55 → 82 %, `annex_iii` 26 → 58 %, `ood_emotion_classroom` 72 → 92 %.
+- Lo que no: `derogation_profiling` 18 → 29 % (test) y 0 → 17 % (OOD), `ood_emotion_medical`
+  0 → 25 % (n=4). El sesgo del profesor (Art. 6.3 aunque haya perfilado) persiste. Ligera
+  regresión de etiqueta en `derogation` (97 → 87 %), aunque la cita mejora (58 → 77 %).
+- La ganancia se mantiene fuera de distribución (+13 puntos en OOD frente a +11,5 en test).
+
+Ficheros: `rlm/weights/final_rlm_lora`, `reports/eval_test_grpo.json`,
+`reports/eval_test_ood_grpo.json`, `logs/train_grpo_resume3.log`, `logs/eval_grpo.log`.

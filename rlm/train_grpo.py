@@ -64,8 +64,15 @@ def train(args: argparse.Namespace) -> None:
         # One prompt per micro-batch. TRL generates all ``grad_accum`` micro-batches of an
         # optimizer step together (steps_per_generation defaults to grad_accum), which is what
         # makes generation cheap; training them one at a time keeps the logits in memory.
-        per_device_train_batch_size=args.num_generations,
+        # Defaults to one prompt (num_generations completions) per micro-batch. On 16 GB GPUs use
+        # 2 with grad_accum x4 (same effective batch) so the backward over the logits fits.
+        per_device_train_batch_size=args.per_device_batch_size or args.num_generations,
         gradient_accumulation_steps=args.grad_accum,
+        # None -> TRL default (= grad_accum, all micro-batches generated together). On 16 GB GPUs
+        # generate one prompt at a time (num_generations / per_device_batch_size, e.g. 4 with a
+        # batch of 2): same algorithm (the policy only changes at the optimizer step), less
+        # memory, slower generation.
+        steps_per_generation=args.steps_per_generation,
         num_generations=args.num_generations,
         max_completion_length=args.max_completion_length,
         temperature=args.temperature,
@@ -128,6 +135,19 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=300)
     parser.add_argument("--num-generations", type=int, default=8)
     parser.add_argument("--grad-accum", type=int, default=1)
+    parser.add_argument(
+        "--per-device-batch-size",
+        type=int,
+        default=None,
+        help="completions per training micro-batch (default: num-generations)",
+    )
+    parser.add_argument(
+        "--steps-per-generation",
+        type=int,
+        default=None,
+        help="micro-batches generated together (default: grad-accum); on 16 GB GPUs use "
+        "num-generations / per-device-batch-size (one prompt per generation)",
+    )
     parser.add_argument("--max-completion-length", type=int, default=768)
     parser.add_argument("--learning-rate", type=float, default=5e-6)
     parser.add_argument("--temperature", type=float, default=1.0)
