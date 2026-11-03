@@ -1,0 +1,293 @@
+{
+  "overall": {
+    "traces": 160,
+    "format_ok": 0.975,
+    "label_correct": 0.806,
+    "label_and_citation": 0.594,
+    "truncated": 0.025,
+    "rewritten": 0.113,
+    "problems": 40,
+    "problems_with_a_verified_trace": 32,
+    "mean_new_tokens": 853.1
+  },
+  "verified_traces_for_sft": 59,
+  "by_label": {
+    "alto_riesgo": {
+      "traces": 32,
+      "format_ok": 0.875,
+      "label_correct": 0.719,
+      "label_and_citation": 0.531,
+      "truncated": 0.125,
+      "rewritten": 0.0,
+      "problems": 8,
+      "problems_with_a_verified_trace": 5,
+      "mean_new_tokens": 1094.3
+    },
+    "prohibido": {
+      "traces": 36,
+      "format_ok": 1.0,
+      "label_correct": 0.944,
+      "label_and_citation": 0.917,
+      "truncated": 0.0,
+      "rewritten": 0.167,
+      "problems": 9,
+      "problems_with_a_verified_trace": 9,
+      "mean_new_tokens": 591.1
+    },
+    "riesgo_limitado": {
+      "traces": 44,
+      "format_ok": 1.0,
+      "label_correct": 0.659,
+      "label_and_citation": 0.614,
+      "truncated": 0.0,
+      "rewritten": 0.114,
+      "problems": 11,
+      "problems_with_a_verified_trace": 10,
+      "mean_new_tokens": 859.7
+    },
+    "riesgo_minimo": {
+      "traces": 48,
+      "format_ok": 1.0,
+      "label_correct": 0.896,
+      "label_and_citation": 0.375,
+      "truncated": 0.0,
+      "rewritten": 0.146,
+      "problems": 12,
+      "problems_with_a_verified_trace": 8,
+      "mean_new_tokens": 882.9
+    }
+  },
+  "by_family": {
+    "annex_i": {
+      "traces": 4,
+      "format_ok": 1.0,
+      "label_correct": 1.0,
+      "label_and_citation": 1.0,
+      "truncated": 0.0,
+      "rewritten": 0.0,
+      "problems": 1,
+      "problems_with_a_verified_trace": 1,
+      "mean_new_tokens": 585.2
+    },
+    "annex_iii": {
+      "traces": 12,
+      "format_ok": 0.667,
+      "label_correct": 0.5,
+      "label_and_citation": 0.333,
+      "truncated": 0.333,
+      "rewritten": 0.0,
+      "problems": 3,
+      "problems_with_a_verified_trace": 1,
+      "mean_new_tokens": 1377.4
+    },
+    "biometric_high": {
+      "traces": 4,
+      "format_ok": 1.0,
+      "label_correct": 0.25,
+      "label_and_citation": 0.25,
+      "truncated": 0.0,
+      "rewritten": 0.0,
+      "problems": 1,
+      "problems_with_a_verified_trace": 1,
+      "mean_new_tokens": 1494.0
+    },
+    "biometric_plain": {
+      "traces": 4,
+      "format_ok": 1.0,
+      "label_correct": 0.75,
+      "label_and_citation": 0.5,
+      "truncated": 0.0,
+      "rewritten": 0.0,
+      "problems": 1,
+      "problems_with_a_verified_trace": 1,
+      "mean_new_tokens": 1018.8
+    },
+    "biometric_sensitive": {
+      "traces": 8,
+      "format_ok": 1.0,
+      "label_correct": 1.0,
+      "label_and_citation": 1.0,
+      "truncated": 0.0,
+      "rewritten": 0.0,
+      "problems": 2,
+      "problems_with_a_verified_trace": 2,
+      "mean_new_tokens": 424.9
+    },
+    "chatbot": {
+      "traces": 8,
+      "format_ok": 1.0,
+      "label_correct": 0.75,
+      "label_and_citation": 0.75,
+      "truncated": 0.0,
+      "rewritten": 0.125,
+      "problems": 2,
+      "problems_with_a_verified_trace": 2,
+      "mean_new_tokens": 729.0
+    },
+    "crime_profiling": {
+      "traces": 4,
+      "format_ok": 1.0,
+      "label_correct": 1.0,
+      "label_and_citation": 1.0,
+      "truncated": 0.0,
+      "rewritten": 0.0,
+      "problems": 1,
+      "problems_with_a_verified_trace": 1,
+      "mean_new_tokens": 402.5
+    },
+    "deep_fake": {
+      "traces": 4,
+      "format_ok": 1.0,
+      "label_correct": 0.5,
+      "label_and_citation": 0.5,
+      "truncated": 0.0,
+      "rewritten": 0.0,
+      "problems": 1,
+      "problems_with_a_verified_trace": 1,
+      "mean_new_tokens": 1350.2
+    },
+    "derogation": {
+      "traces": 36,
+      "format_ok": 1.0,
+      "label_correct": 0.889,
+      "label_and_citation": 0.25,
+      "truncated": 0.0,
+      "rewritten": 0.111,
+      "problems": 9,
+      "problems_with_a_verified_trace": 5,
+      "mean_new_tokens": 835.0
+    },
+    "derogation_chatbot": {
+      "traces": 16,
+      "format_ok": 1.0,
+      "label_correct": 0.75,
+      "label_and_citation": 0.75,
+      "truncated": 0.0,
+      "rewritten": 0.25,
+      "problems": 4,
+      "problems_with_a_verified_trace": 4,
+      "mean_new_tokens": 783.2
+    },
+    "derogation_profiling": {
+      "traces": 4,
+      "format_ok": 1.0,
+      "label_correct": 1.0,
+      "label_and_citation": 0.0,
+      "truncated": 0.0,
+      "rewritten": 0.0,
+      "problems": 1,
+      "problems_with_a_verified_trace": 0,
+      "mean_new_tokens": 998.8
+    },
+    "exception": {
+      "traces": 8,
+      "format_ok": 1.0,
+      "label_correct": 0.875,
+      "label_and_citation": 0.75,
+      "truncated": 0.0,
+      "rewritten": 0.125,
+      "problems": 2,
+      "problems_with_a_verified_trace": 2,
+      "mean_new_tokens": 1029.5
+    },
+    "face_scraping": {
+      "traces": 4,
+      "format_ok": 1.0,
+      "label_correct": 1.0,
+      "label_and_citation": 1.0,
+      "truncated": 0.0,
+      "rewritten": 0.0,
+      "problems": 1,
+      "problems_with_a_verified_trace": 1,
+      "mean_new_tokens": 660.0
+    },
+    "manipulation": {
+      "traces": 4,
+      "format_ok": 1.0,
+      "label_correct": 1.0,
+      "label_and_citation": 0.75,
+      "truncated": 0.0,
+      "rewritten": 0.0,
+      "problems": 1,
+      "problems_with_a_verified_trace": 1,
+      "mean_new_tokens": 490.8
+    },
+    "plain": {
+      "traces": 4,
+      "format_ok": 1.0,
+      "label_correct": 1.0,
+      "label_and_citation": 0.75,
+      "truncated": 0.0,
+      "rewritten": 0.5,
+      "problems": 1,
+      "problems_with_a_verified_trace": 1,
+      "mean_new_tokens": 1021.0
+    },
+    "police_rbi_authorised": {
+      "traces": 8,
+      "format_ok": 1.0,
+      "label_correct": 1.0,
+      "label_and_citation": 1.0,
+      "truncated": 0.0,
+      "rewritten": 0.0,
+      "problems": 2,
+      "problems_with_a_verified_trace": 2,
+      "mean_new_tokens": 772.0
+    },
+    "police_rbi_prohibited": {
+      "traces": 4,
+      "format_ok": 1.0,
+      "label_correct": 0.75,
+      "label_and_citation": 0.75,
+      "truncated": 0.0,
+      "rewritten": 0.25,
+      "problems": 1,
+      "problems_with_a_verified_trace": 1,
+      "mean_new_tokens": 734.2
+    },
+    "public_text": {
+      "traces": 4,
+      "format_ok": 1.0,
+      "label_correct": 0.5,
+      "label_and_citation": 0.25,
+      "truncated": 0.0,
+      "rewritten": 0.0,
+      "problems": 1,
+      "problems_with_a_verified_trace": 1,
+      "mean_new_tokens": 936.0
+    },
+    "social_scoring": {
+      "traces": 8,
+      "format_ok": 1.0,
+      "label_correct": 0.875,
+      "label_and_citation": 0.875,
+      "truncated": 0.0,
+      "rewritten": 0.375,
+      "problems": 2,
+      "problems_with_a_verified_trace": 2,
+      "mean_new_tokens": 745.2
+    },
+    "synthetic": {
+      "traces": 8,
+      "format_ok": 1.0,
+      "label_correct": 0.5,
+      "label_and_citation": 0.5,
+      "truncated": 0.0,
+      "rewritten": 0.0,
+      "problems": 2,
+      "problems_with_a_verified_trace": 1,
+      "mean_new_tokens": 780.4
+    },
+    "vulnerability": {
+      "traces": 4,
+      "format_ok": 1.0,
+      "label_correct": 1.0,
+      "label_and_citation": 1.0,
+      "truncated": 0.0,
+      "rewritten": 0.5,
+      "problems": 1,
+      "problems_with_a_verified_trace": 1,
+      "mean_new_tokens": 692.2
+    }
+  }
+}

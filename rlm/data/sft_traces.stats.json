@@ -1,0 +1,315 @@
+{
+  "overall": {
+    "traces": 4000,
+    "format_ok": 0.975,
+    "label_correct": 0.868,
+    "label_and_citation": 0.775,
+    "truncated": 0.026,
+    "rewritten": 0.806,
+    "problems": 1000,
+    "problems_with_a_verified_trace": 921,
+    "mean_new_tokens": 806.4
+  },
+  "verified_traces_for_sft": 1758,
+  "by_label": {
+    "alto_riesgo": {
+      "traces": 1000,
+      "format_ok": 0.934,
+      "label_correct": 0.683,
+      "label_and_citation": 0.607,
+      "truncated": 0.068,
+      "rewritten": 0.833,
+      "problems": 250,
+      "problems_with_a_verified_trace": 206,
+      "mean_new_tokens": 1046.0
+    },
+    "prohibido": {
+      "traces": 1000,
+      "format_ok": 0.995,
+      "label_correct": 0.968,
+      "label_and_citation": 0.962,
+      "truncated": 0.005,
+      "rewritten": 0.95,
+      "problems": 250,
+      "problems_with_a_verified_trace": 249,
+      "mean_new_tokens": 572.8
+    },
+    "riesgo_limitado": {
+      "traces": 1000,
+      "format_ok": 0.975,
+      "label_correct": 0.84,
+      "label_and_citation": 0.839,
+      "truncated": 0.026,
+      "rewritten": 0.721,
+      "problems": 250,
+      "problems_with_a_verified_trace": 240,
+      "mean_new_tokens": 902.4
+    },
+    "riesgo_minimo": {
+      "traces": 1000,
+      "format_ok": 0.996,
+      "label_correct": 0.982,
+      "label_and_citation": 0.691,
+      "truncated": 0.004,
+      "rewritten": 0.722,
+      "problems": 250,
+      "problems_with_a_verified_trace": 226,
+      "mean_new_tokens": 704.3
+    }
+  },
+  "by_family": {
+    "annex_i": {
+      "traces": 44,
+      "format_ok": 1.0,
+      "label_correct": 1.0,
+      "label_and_citation": 0.886,
+      "truncated": 0.0,
+      "rewritten": 0.614,
+      "problems": 11,
+      "problems_with_a_verified_trace": 11,
+      "mean_new_tokens": 575.2
+    },
+    "annex_iii": {
+      "traces": 388,
+      "format_ok": 0.956,
+      "label_correct": 0.794,
+      "label_and_citation": 0.647,
+      "truncated": 0.044,
+      "rewritten": 0.778,
+      "problems": 97,
+      "problems_with_a_verified_trace": 85,
+      "mean_new_tokens": 925.7
+    },
+    "biometric_high": {
+      "traces": 60,
+      "format_ok": 0.95,
+      "label_correct": 0.667,
+      "label_and_citation": 0.65,
+      "truncated": 0.05,
+      "rewritten": 0.95,
+      "problems": 15,
+      "problems_with_a_verified_trace": 12,
+      "mean_new_tokens": 1096.4
+    },
+    "biometric_plain": {
+      "traces": 48,
+      "format_ok": 1.0,
+      "label_correct": 0.979,
+      "label_and_citation": 0.979,
+      "truncated": 0.0,
+      "rewritten": 0.938,
+      "problems": 12,
+      "problems_with_a_verified_trace": 12,
+      "mean_new_tokens": 942.7
+    },
+    "biometric_sensitive": {
+      "traces": 140,
+      "format_ok": 0.986,
+      "label_correct": 0.95,
+      "label_and_citation": 0.95,
+      "truncated": 0.014,
+      "rewritten": 0.95,
+      "problems": 35,
+      "problems_with_a_verified_trace": 35,
+      "mean_new_tokens": 532.5
+    },
+    "chatbot": {
+      "traces": 264,
+      "format_ok": 0.992,
+      "label_correct": 0.989,
+      "label_and_citation": 0.989,
+      "truncated": 0.008,
+      "rewritten": 0.64,
+      "problems": 66,
+      "problems_with_a_verified_trace": 66,
+      "mean_new_tokens": 740.7
+    },
+    "crime_profiling": {
+      "traces": 80,
+      "format_ok": 1.0,
+      "label_correct": 1.0,
+      "label_and_citation": 1.0,
+      "truncated": 0.0,
+      "rewritten": 0.938,
+      "problems": 20,
+      "problems_with_a_verified_trace": 20,
+      "mean_new_tokens": 495.3
+    },
+    "deep_fake": {
+      "traces": 140,
+      "format_ok": 1.0,
+      "label_correct": 0.929,
+      "label_and_citation": 0.929,
+      "truncated": 0.0,
+      "rewritten": 0.679,
+      "problems": 35,
+      "problems_with_a_verified_trace": 35,
+      "mean_new_tokens": 796.0
+    },
+    "derogation": {
+      "traces": 628,
+      "format_ok": 0.997,
+      "label_correct": 0.992,
+      "label_and_citation": 0.791,
+      "truncated": 0.003,
+      "rewritten": 0.72,
+      "problems": 157,
+      "problems_with_a_verified_trace": 149,
+      "mean_new_tokens": 626.7
+    },
+    "derogation_chatbot": {
+      "traces": 304,
+      "format_ok": 0.924,
+      "label_correct": 0.536,
+      "label_and_citation": 0.533,
+      "truncated": 0.079,
+      "rewritten": 0.895,
+      "problems": 76,
+      "problems_with_a_verified_trace": 66,
+      "mean_new_tokens": 1224.0
+    },
+    "derogation_profiling": {
+      "traces": 264,
+      "format_ok": 0.864,
+      "label_correct": 0.458,
+      "label_and_citation": 0.424,
+      "truncated": 0.144,
+      "rewritten": 0.848,
+      "problems": 66,
+      "problems_with_a_verified_trace": 46,
+      "mean_new_tokens": 1314.6
+    },
+    "emotion_work": {
+      "traces": 144,
+      "format_ok": 1.0,
+      "label_correct": 0.944,
+      "label_and_citation": 0.944,
+      "truncated": 0.0,
+      "rewritten": 0.972,
+      "problems": 36,
+      "problems_with_a_verified_trace": 36,
+      "mean_new_tokens": 692.8
+    },
+    "exception": {
+      "traces": 108,
+      "format_ok": 0.991,
+      "label_correct": 0.954,
+      "label_and_citation": 0.417,
+      "truncated": 0.009,
+      "rewritten": 0.787,
+      "problems": 27,
+      "problems_with_a_verified_trace": 18,
+      "mean_new_tokens": 895.9
+    },
+    "face_scraping": {
+      "traces": 124,
+      "format_ok": 1.0,
+      "label_correct": 1.0,
+      "label_and_citation": 1.0,
+      "truncated": 0.0,
+      "rewritten": 0.935,
+      "problems": 31,
+      "problems_with_a_verified_trace": 31,
+      "mean_new_tokens": 466.3
+    },
+    "manipulation": {
+      "traces": 124,
+      "format_ok": 1.0,
+      "label_correct": 1.0,
+      "label_and_citation": 1.0,
+      "truncated": 0.0,
+      "rewritten": 0.984,
+      "problems": 31,
+      "problems_with_a_verified_trace": 31,
+      "mean_new_tokens": 446.2
+    },
+    "plain": {
+      "traces": 264,
+      "format_ok": 0.996,
+      "label_correct": 0.97,
+      "label_and_citation": 0.564,
+      "truncated": 0.004,
+      "rewritten": 0.701,
+      "problems": 66,
+      "problems_with_a_verified_trace": 59,
+      "mean_new_tokens": 810.6
+    },
+    "police_rbi_authorised": {
+      "traces": 156,
+      "format_ok": 0.949,
+      "label_correct": 0.577,
+      "label_and_citation": 0.577,
+      "truncated": 0.051,
+      "rewritten": 0.936,
+      "problems": 39,
+      "problems_with_a_verified_trace": 30,
+      "mean_new_tokens": 1154.9
+    },
+    "police_rbi_prohibited": {
+      "traces": 196,
+      "format_ok": 0.995,
+      "label_correct": 0.939,
+      "label_and_citation": 0.939,
+      "truncated": 0.005,
+      "rewritten": 0.944,
+      "problems": 49,
+      "problems_with_a_verified_trace": 49,
+      "mean_new_tokens": 678.1
+    },
+    "police_recidivism": {
+      "traces": 88,
+      "format_ok": 0.977,
+      "label_correct": 0.909,
+      "label_and_citation": 0.864,
+      "truncated": 0.023,
+      "rewritten": 0.875,
+      "problems": 22,
+      "problems_with_a_verified_trace": 22,
+      "mean_new_tokens": 778.7
+    },
+    "public_text": {
+      "traces": 64,
+      "format_ok": 1.0,
+      "label_correct": 1.0,
+      "label_and_citation": 1.0,
+      "truncated": 0.0,
+      "rewritten": 0.609,
+      "problems": 16,
+      "problems_with_a_verified_trace": 16,
+      "mean_new_tokens": 736.5
+    },
+    "social_scoring": {
+      "traces": 84,
+      "format_ok": 0.976,
+      "label_correct": 0.94,
+      "label_and_citation": 0.905,
+      "truncated": 0.024,
+      "rewritten": 0.976,
+      "problems": 21,
+      "problems_with_a_verified_trace": 20,
+      "mean_new_tokens": 652.8
+    },
+    "synthetic": {
+      "traces": 180,
+      "format_ok": 1.0,
+      "label_correct": 0.972,
+      "label_and_citation": 0.972,
+      "truncated": 0.0,
+      "rewritten": 0.561,
+      "problems": 45,
+      "problems_with_a_verified_trace": 45,
+      "mean_new_tokens": 727.6
+    },
+    "vulnerability": {
+      "traces": 108,
+      "format_ok": 1.0,
+      "label_correct": 1.0,
+      "label_and_citation": 0.972,
+      "truncated": 0.0,
+      "rewritten": 0.898,
+      "problems": 27,
+      "problems_with_a_verified_trace": 27,
+      "mean_new_tokens": 536.9
+    }
+  }
+}
