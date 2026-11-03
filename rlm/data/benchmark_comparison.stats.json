@@ -1,0 +1,50 @@
+{
+  "scenarios": 339,
+  "parse_failures": 3,
+  "agreement": 0.568,
+  "agreement_merging_limited_and_minimal": 0.729,
+  "per_benchmark_class": {
+    "prohibido": {
+      "n": 70,
+      "agreement": 0.657
+    },
+    "alto_riesgo": {
+      "n": 86,
+      "agreement": 0.349
+    },
+    "riesgo_limitado": {
+      "n": 81,
+      "agreement": 0.198
+    },
+    "riesgo_minimo": {
+      "n": 99,
+      "agreement": 1.0
+    }
+  },
+  "confusion_benchmark_to_engine": {
+    "prohibido": {
+      "prohibido": 46,
+      "alto_riesgo": 8,
+      "riesgo_limitado": 3,
+      "riesgo_minimo": 13
+    },
+    "alto_riesgo": {
+      "prohibido": 11,
+      "alto_riesgo": 30,
+      "riesgo_limitado": 3,
+      "riesgo_minimo": 42
+    },
+    "riesgo_limitado": {
+      "prohibido": 1,
+      "alto_riesgo": 10,
+      "riesgo_limitado": 16,
+      "riesgo_minimo": 54
+    },
+    "riesgo_minimo": {
+      "prohibido": 0,
+      "alto_riesgo": 0,
+      "riesgo_limitado": 0,
+      "riesgo_minimo": 99
+    }
+  }
+}
