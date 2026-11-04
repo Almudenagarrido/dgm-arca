@@ -821,7 +821,8 @@ cualquier chunking. Las 46 citas se comprobaron automáticamente contra el corpu
 con dos pasajes igual de válidos (q06: Art. 6.4 y Art. 49.2; q26: los apartados 1 y 2 del Art. 49
 repiten la frase).
 
-**Recuperación** (`rag/evaluate.py` → `reports/phase3_eval.json`, Qwen3-Embedding-0.6B, top-k = 5,
+**Recuperación** (`rag/evaluate.py`, dorado v1 → hoy en `reports/phase3_eval_gold_v1.json`;
+las cifras con el dorado v2 están en la entrada del 2026-11-04; Qwen3-Embedding-0.6B, top-k = 5,
 n = 46; una pregunta son 2,2 puntos):
 
 | Chunking | Fragmentos | Media (car.) | BM25 hit@5 / MRR | Denso hit@5 / MRR | λ* | Híbrido hit@1 / hit@5 / MRR |
@@ -944,7 +945,8 @@ son con el conjunto corregido.** La tabla de chunking de la entrada anterior se 
 siguen siendo los mejores (híbrido: 0,46 / 0,65 / 0,55 en hit@1 / hit@5 / MRR).
 
 **Reranker** (Qwen3-Reranker-0.6B como cross-encoder: puntuación = P(«yes») con el prompt de la
-ficha del modelo; `rag/evaluate.py --rerank`):
+ficha del modelo; `rag/evaluate.py --rerank`; dorado v1, repetido con el v2 en la entrada del
+2026-11-04):
 
 | Segunda etapa | Candidatos | hit@1 | hit@5 | MRR |
 |---|---|---|---|---|
@@ -1129,8 +1131,89 @@ significativa, y la de 5 frente a 8 fragmentos solo lo es en fidelidad (+8,7 [+2
 «no compensa» de la entrada anterior se sostiene para la fidelidad, no para la corrección.
 
 **Pendiente del equipo:** revisar las 71 filas y cambiar `review`. Si cambian preguntas, se
-recalcula todo con `rag.evaluate_answers`, `rag.judge`, `rag.calibrate` y `rag.stats`. Las
-tablas de chunking, λ y reranker de las entradas anteriores siguen medidas con el dorado v1.
+recalcula todo con `rag.evaluate`, `rag.evaluate_answers`, `rag.judge`, `rag.calibrate` y
+`rag.stats`.
 
 Ficheros: `reports/phase3_calibration.json`, `phase3_calibration_yesno.json`,
 `phase3_answers.json` (v2), `phase3_answers_gold_v1.json` (la final anterior), `phase3_ci.json`.
+
+### 2026-11-04 · Fase 3 · Chunking, λ, instrucción y reranker medidos de nuevo con el dorado v2
+
+**Por qué.** Las tablas de las dos entradas anteriores se midieron con el dorado v1 (46 preguntas
+con respuesta). Con el v2 hay 57 y son más difíciles (inferenciales y casos prácticos), así que
+repetimos los barridos para ver si la configuración desplegada sigue siendo la buena. Las cifras
+del v1 quedan en `reports/phase3_eval_gold_v1.json`; `reports/phase3_eval.json` tiene ahora las
+del v2. Con n = 57, una pregunta son 1,75 puntos.
+
+**Recuperación** (`rag.evaluate`, Qwen3-Embedding-0.6B, top-k = 5):
+
+| Chunking | Fragmentos | BM25 hit@5 / MRR | Denso hit@5 / MRR | λ* | Híbrido hit@1 / hit@5 / MRR |
+|---|---|---|---|---|---|
+| recursivo (800/100) | 3262 | 0,33 / 0,21 | 0,49 / 0,38 | 0,3 | 0,32 / 0,49 / 0,40 |
+| semántico 0,50 | 5602 | 0,35 / 0,23 | 0,49 / 0,40 | 0,1 | 0,32 / 0,51 / 0,42 |
+| semántico 0,60 | 4333 | 0,37 / 0,23 | 0,49 / 0,41 | 0,3 | 0,32 / 0,60 / 0,43 |
+| semántico 0,70 | 3261 | 0,42 / 0,26 | 0,54 / 0,40 | 0,3 | 0,30 / 0,58 / 0,43 |
+| semántico 0,80 | 2076 | 0,39 / 0,23 | 0,60 / 0,42 | 0,3 | 0,30 / 0,60 / 0,44 |
+| recursivo + título | 3262 | 0,37 / 0,24 | 0,65 / 0,43 | 0,3 | 0,30 / 0,63 / 0,45 |
+| semántico 0,50 + título | 5602 | 0,40 / 0,27 | 0,67 / 0,52 | 0,3 | **0,44** / 0,63 / **0,53** |
+| semántico 0,60 + título | 4333 | 0,44 / 0,25 | 0,67 / 0,48 | 0,3 | 0,35 / **0,68** / 0,50 |
+| **semántico 0,70 + título** (desplegado) | 3261 | 0,46 / 0,30 | 0,67 / 0,49 | **0,3** | 0,37 / **0,68** / 0,52 |
+| semántico 0,80 + título | 2076 | 0,46 / 0,27 | 0,63 / 0,47 | 0,3 | 0,40 / 0,63 / 0,51 |
+
+- **Las conclusiones de la primera entrada se mantienen.** A igual tamaño, el semántico gana al
+  recursivo (hit@5 híbrido 0,58 frente a 0,49). El título delante del fragmento sigue siendo la
+  mejora más grande (entre +0,04 y +0,11 de MRR). El denso gana a BM25 en todas las variantes. El
+  híbrido mejora o iguala al denso en MRR. λ = 0,3 es el óptimo en 9 de las 10 variantes, y la
+  curva sigue plana entre 0 y 0,4 y cae a partir de 0,5 (`reports/phase3_lambda_sweep.png`).
+- **Lo que cambia:** por MRR del híbrido, el mejor chunking pasa a ser el semántico 0,50 con
+  título (0,530 frente a 0,519), y `finish` lo marca como `chosen` en el JSON. La diferencia es
+  menos de una pregunta, y en hit@5 gana el 0,70 (0,68 frente a 0,63). Para decidir lo medimos
+  con el pipeline completo (tabla siguiente).
+- **Todo baja respecto al v1** (híbrido elegido: hit@5 0,65 → 0,68, pero MRR 0,55 → 0,52 y hit@1
+  0,46 → 0,37). Las preguntas nuevas piden varias fuentes y el pasaje suele quedar más abajo.
+
+**Instrucción de la consulta** (sobre `semántico 0,50 + título`, el mejor denso):
+
+| Instrucción | hit@1 | hit@5 | MRR |
+|---|---|---|---|
+| por defecto | **0,40** | 0,67 | **0,52** |
+| del dominio en español | 0,23 | 0,65 | 0,41 |
+| del dominio en inglés | 0,35 | 0,60 | 0,46 |
+| «mismo tema» | 0,35 | **0,68** | 0,51 |
+| sin instrucción | 0,35 | **0,68** | 0,50 |
+
+La sorpresa del v1 se repite: la instrucción del dominio en español hunde el hit@1 (de 0,40 a
+0,23). La genérica en inglés sigue siendo la mejor.
+
+**Reranker** sobre la configuración desplegada (`rag.evaluate --rerank --rerank-chunking
+semantic-0.70+title`; intervalos de Wilson al 95 % en `reports/phase3_ci.json`):
+
+| Segunda etapa | Candidatos | hit@1 | hit@5 | MRR |
+|---|---|---|---|---|
+| ninguna (híbrido) | — | 0,37 | 0,70 | 0,53 |
+| reranker | 20 | 0,44 | 0,77 | 0,58 |
+| reranker | 50 | 0,44 | 0,81 | 0,61 |
+| híbrido + consulta en inglés, sin reranker | — | 0,37 | 0,74 | 0,52 |
+| **híbrido + consulta en inglés + reranker** (desplegado) | **30** | **0,49** | **0,84** [0,73, 0,92] | **0,65** |
+| híbrido + consulta en inglés + reranker | 75 | 0,46 | 0,83 | 0,63 |
+
+- **La configuración desplegada sigue siendo la mejor** de las 20 que se prueban, igual que con el
+  v1 (0,52 / 0,89 / 0,69). Su hit@5 de 0,84 coincide con el 84 % de «pasaje relevante entre los
+  5» de la entrada anterior, medido con `rag.evaluate_answers`.
+- **0,70 frente a 0,50 con el pipeline completo.** Repetimos el experimento sobre el semántico 0,50
+  con título (`rerank_semantic-0.50+title` en el JSON). Con la consulta en inglés y el reranker
+  sobre 30, el 0,70 gana por +8,8 puntos de hit@5 [0, +19] y +0,08 de MRR [−0,01, +0,18]
+  (bootstrap emparejado, `deployed_vs_semantic_0.50` en `phase3_ci.json`). La ventaja del 0,50
+  en la primera etapa no se traslada al final. **No cambiamos nada**: las respuestas, el juez y la
+  calibración de la entrada anterior siguen valiendo.
+- **Consulta traducida:** con ella el pasaje entra entre los 30 primeros candidatos en el 95 % de
+  las preguntas (88 % sin ella), casi lo mismo que en el v1 (96 % / 87 %).
+- **Instrucción del reranker:** como en el v1, la del dominio en inglés da el mejor hit@5 y la de
+  la ficha del modelo empata o gana en hit@1 (0,46 frente a 0,44 con 50 candidatos). Mantenemos la
+  del dominio en inglés.
+- **Más candidatos no es mejor:** 75 empeora un poco a 30 (hit@5 0,83 frente a 0,84). Los
+  intervalos se solapan, así que mantenemos 30 por coste.
+
+Ficheros: `reports/phase3_eval.json` (v2, con `rerank` sobre la configuración desplegada y
+`rerank_semantic-0.50+title`), `phase3_eval_gold_v1.json`, `phase3_ci.json`,
+`phase3_lambda_sweep.png`, `phase3_sentence_distances.png`.

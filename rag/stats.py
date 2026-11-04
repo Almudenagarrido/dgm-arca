@@ -141,6 +141,32 @@ def rerank_intervals(eval_path: Path, k: int = 5) -> dict:
     return out
 
 
+def chunking_difference(eval_path: Path, run: str, other_key: str, k: int = 5) -> dict:
+    """Deployed rerank experiment minus another one (``other_key``) on the same questions.
+
+    Positive diff = the deployed chunking (``rerank``) is better for that reranker run.
+    """
+    results = json.loads(eval_path.read_text())
+    base = results.get("rerank", {}).get("per_question", {}).get(run)
+    other = results.get(other_key, {}).get("per_question", {}).get(run)
+    if not base or not other:
+        return {}
+    ids = sorted(set(base) & set(other))
+    metrics = {
+        "hit@1": lambda x: float(x == 1),
+        f"hit@{k}": lambda x: float(x is not None and x <= k),
+        "mrr": lambda x: 1 / x if x else 0.0,
+    }
+    return {
+        "run": run,
+        "against": other_key,
+        **{
+            name: paired_bootstrap([f(other[i]) for i in ids], [f(base[i]) for i in ids])
+            for name, f in metrics.items()
+        },
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -165,6 +191,13 @@ def main() -> None:
             result["vs_final"][name] = answer_differences(other, base)
     if (reports / "phase3_eval.json").exists():
         result["rerank"] = rerank_intervals(reports / "phase3_eval.json")
+        # With gold v2 the best first-stage MRR moved to semantic-0.50+title; is that real?
+        result["deployed_vs_semantic_0.50"] = {
+            run: chunking_difference(
+                reports / "phase3_eval.json", run, "rerank_semantic-0.50+title"
+            )
+            for run in ("hybrid+en/aiact_en/pool30", "hybrid+en/aiact_en/pool75")
+        }
     Path(args.out).write_text(json.dumps(result, indent=2, ensure_ascii=False))
 
     print("Final configuration (95 % Wilson intervals):")

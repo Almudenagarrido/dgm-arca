@@ -359,7 +359,10 @@ def rerank_experiment(args, results: dict) -> dict:
     from rag.generate import RagPipeline
     from rag.retriever import Reranker, interleave
 
-    chosen = results["chosen"]
+    chosen = dict(results["chosen"])
+    if getattr(args, "rerank_chunking", None):  # e.g. the deployed configuration
+        chosen["chunking"] = args.rerank_chunking
+        chosen["lambda"] = results["chunkings"][args.rerank_chunking]["hybrid_best_lambda"]
     pipeline = RagPipeline(
         chunking=chosen["chunking"],
         weight_bm25=chosen["lambda"],
@@ -445,13 +448,20 @@ def main() -> None:
         help="add the reranker experiment to an existing --out (chosen chunking and λ)",
     )
     parser.add_argument("--rerank-pools", type=int, nargs="+", default=[20, 30, 50, 75])
+    parser.add_argument(
+        "--rerank-chunking",
+        help="run the reranker experiment on this chunking (and its best λ) instead of the chosen",
+    )
+    parser.add_argument(
+        "--rerank-key", default="rerank", help="key of --out where the reranker results go"
+    )
     args = parser.parse_args()
 
     if args.rerank:
         results = json.loads(Path(args.out).read_text())
-        results["rerank"] = rerank_experiment(args, results)
+        results[args.rerank_key] = rerank_experiment(args, results)
         Path(args.out).write_text(json.dumps(results, indent=2, ensure_ascii=False))
-        print(f"best rerank: {results['rerank']['best']}")
+        print(f"best rerank: {results[args.rerank_key]['best']}")
         return
 
     if args.plot_only:
