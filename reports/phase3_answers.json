@@ -8,55 +8,117 @@
     "closed_book": false
   },
   "summary": {
-    "n_answerable": 46,
-    "n_unanswerable": 5,
-    "keyword_accuracy": 0.87,
+    "n_answerable": 57,
+    "n_unanswerable": 14,
+    "relevant_chunk_retrieved": 0.842,
+    "required_sources_retrieved": 0.877,
+    "cites_relevant_chunk": 0.719,
     "answers_with_citation": 1.0,
     "citations_valid": 1.0,
-    "cites_relevant_chunk": 0.783,
-    "relevant_chunk_retrieved": 0.891,
+    "keyword_accuracy": 0.895,
     "false_refusals": 0.0,
-    "correct_refusals": 0.8,
-    "judge_correct": 0.957,
-    "judge_correct_or_partial": 1.0,
-    "judge_faithful": 1.0,
-    "judge_keyword_agreement": 0.87
-  },
-  "rows": [
-    {
-      "id": "q01",
-      "question": "Si la policía usa identificación biométrica en tiempo real por urgencia sin autorización previa, ¿en cuánto tiempo tiene que pedirla?",
-      "answerable": true,
-      "answer": "Si la policía usa identificación biométrica en tiempo real por urgencia sin autorización previa, tiene que pedirla en un plazo de veinticuatro horas a partir del momento en que se empiece a utilizar el sistema [adc35a2bfb-0830]. En caso de rechazo, el uso se interrumpirá inmediatamente [e3c6c1fec3-0012].",
-      "returned": [
-        "adc35a2bfb-0787",
-        "adc35a2bfb-0830",
-        "e3c6c1fec3-0012",
-        "144ef2da19-0012",
-        "e3c6c1fec3-0010"
-      ],
-      "seconds": 4.1,
-      "cited": [
-        "adc35a2bfb-0830",
-        "e3c6c1fec3-0012"
-      ],
-      "invalid_citations": [],
-      "citations_valid": true,
-      "has_citation": true,
-      "cites_relevant": true,
-      "retrieved_relevant": true,
-      "keyword": true,
-      "refusal": false,
-      "judge": {
-        "correct": "sí",
-        "faithful": "sí",
-        "reason": "La respuesta refleja exactamente el plazo de 24 horas y la consecuencia de interrupción inmediata al rechazo, sin añadir ni omitir información relevante."
+    "correct_refusals": 0.929,
+    "by_question_type": {
+      "caso_practico": {
+        "n_answerable": 10,
+        "n_unanswerable": 0,
+        "relevant_chunk_retrieved": 0.8,
+        "required_sources_retrieved": 0.8,
+        "cites_relevant_chunk": 0.6,
+        "answers_with_citation": 1.0,
+        "citations_valid": 1.0,
+        "keyword_accuracy": 1.0,
+        "false_refusals": 0.0,
+        "correct_refusals": null
+      },
+      "factual": {
+        "n_answerable": 35,
+        "n_unanswerable": 0,
+        "relevant_chunk_retrieved": 0.857,
+        "required_sources_retrieved": 0.914,
+        "cites_relevant_chunk": 0.771,
+        "answers_with_citation": 1.0,
+        "citations_valid": 1.0,
+        "keyword_accuracy": 0.857,
+        "false_refusals": 0.0,
+        "correct_refusals": null
+      },
+      "inferencial": {
+        "n_answerable": 12,
+        "n_unanswerable": 0,
+        "relevant_chunk_retrieved": 0.833,
+        "required_sources_retrieved": 0.833,
+        "cites_relevant_chunk": 0.667,
+        "answers_with_citation": 1.0,
+        "citations_valid": 1.0,
+        "keyword_accuracy": 0.917,
+        "false_refusals": 0.0,
+        "correct_refusals": null
+      },
+      "no_respondible": {
+        "n_answerable": 0,
+        "n_unanswerable": 14,
+        "relevant_chunk_retrieved": null,
+        "required_sources_retrieved": null,
+        "cites_relevant_chunk": null,
+        "answers_with_citation": null,
+        "citations_valid": 1.0,
+        "keyword_accuracy": null,
+        "false_refusals": null,
+        "correct_refusals": 0.929
       }
     },
+    "by_difficulty": {
+      "difícil": {
+        "n_answerable": 8,
+        "n_unanswerable": 9,
+        "relevant_chunk_retrieved": 0.5,
+        "required_sources_retrieved": 0.5,
+        "cites_relevant_chunk": 0.125,
+        "answers_with_citation": 1.0,
+        "citations_valid": 1.0,
+        "keyword_accuracy": 0.75,
+        "false_refusals": 0.0,
+        "correct_refusals": 0.889
+      },
+      "fácil": {
+        "n_answerable": 15,
+        "n_unanswerable": 1,
+        "relevant_chunk_retrieved": 0.867,
+        "required_sources_retrieved": 0.933,
+        "cites_relevant_chunk": 0.733,
+        "answers_with_citation": 1.0,
+        "citations_valid": 1.0,
+        "keyword_accuracy": 1.0,
+        "false_refusals": 0.0,
+        "correct_refusals": 1.0
+      },
+      "media": {
+        "n_answerable": 34,
+        "n_unanswerable": 4,
+        "relevant_chunk_retrieved": 0.912,
+        "required_sources_retrieved": 0.941,
+        "cites_relevant_chunk": 0.853,
+        "answers_with_citation": 1.0,
+        "citations_valid": 1.0,
+        "keyword_accuracy": 0.882,
+        "false_refusals": 0.0,
+        "correct_refusals": 1.0
+      }
+    },
+    "judge_correct": 0.895,
+    "judge_correct_or_partial": 1.0,
+    "judge_faithful": 0.965,
+    "judge_caveats_respected": 0.894,
+    "judge_keyword_agreement": 0.825
+  },
+  "rows": [
     {
       "id": "q02",
       "question": "¿Quién es el «responsable del despliegue» según el reglamento?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "fácil",
       "answer": "Según el reglamento, el «responsable del despliegue» es una persona física o jurídica, o autoridad pública, órgano u organismo que utilice un sistema de IA bajo su propia autoridad, salvo cuando su uso se enmarque en una actividad personal de carácter no profesional [adc35a2bfb-0082]. Este concepto también se menciona en [b537ab8c01-0003], donde se define como cualquier persona que utilice un sistema de IA bajo su propia autoridad.",
       "returned": [
         "c75a31e761-0002",
@@ -65,7 +127,8 @@
         "adc35a2bfb-0082",
         "9a41a15aab-0001"
       ],
-      "seconds": 3.8,
+      "seconds": 4.3,
+      "required_sources_retrieved": true,
       "cited": [
         "adc35a2bfb-0082",
         "b537ab8c01-0003"
@@ -80,13 +143,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja exactamente la definición proporcionada en la evidencia, incluyendo la excepción sobre el uso personal no profesional y cita los fragmentos relevantes."
+        "caveats": "sí",
+        "reason": "La respuesta refleja correctamente la definición del «responsable del despliegue» según la evidencia, incluyendo la excepción del uso personal no profesional, y cita las fuentes mencionadas en el texto oficial."
       }
     },
     {
       "id": "q03",
       "question": "¿Cómo define el reglamento una ultrasuplantación (deepfake)?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "fácil",
       "answer": "El reglamento define una ultrasuplantación como «un contenido de imagen, audio o vídeo generado o manipulado por una IA que se asemeja a personas, objetos, lugares, entidades o sucesos reales y que puede inducir a una persona a pensar erróneamente que son auténticos o verídicos» [c75a31e761-0018]. Además, se establece que los responsables del despliegue deben hacer público, de manera clara y distinguible, que este contenido ha sido creado o manipulado de manera artificial [7561473017-0009].",
       "returned": [
         "c75a31e761-0018",
@@ -96,6 +162,7 @@
         "adc35a2bfb-0163"
       ],
       "seconds": 4.3,
+      "required_sources_retrieved": true,
       "cited": [
         "c75a31e761-0018",
         "7561473017-0009"
@@ -110,13 +177,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta reproduce exactamente la definición del texto oficial y menciona la obligación de transparencia citada en los fragmentos, sin añadir ni omitir información esencial."
+        "caveats": "n/a",
+        "reason": "La respuesta incluye la definición y la obligación de transparencia mencionadas en la evidencia, sin añadir información no presente ni contradecir lo establecido."
       }
     },
     {
       "id": "q04",
       "question": "¿Qué tienen que hacer las empresas que usan IA respecto a la formación de su personal?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "fácil",
       "answer": "Las empresas que usan IA tienen que garantizar que su personal y otras personas encargadas del funcionamiento y uso de los sistemas de IA tengan un nivel suficiente de alfabetización en materia de IA, teniendo en cuenta sus conocimientos, experiencia, educación y formación [cf54c17c8f-0000]. Además, deben capacitar a dicha persona para que comprenda el sistema de IA y sus limitaciones, así como para interpretar correctamente sus resultados [adc35a2bfb-0844].",
       "returned": [
         "cf54c17c8f-0000",
@@ -126,6 +196,7 @@
         "adc35a2bfb-0467"
       ],
       "seconds": 3.8,
+      "required_sources_retrieved": true,
       "cited": [
         "cf54c17c8f-0000",
         "adc35a2bfb-0844"
@@ -140,13 +211,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta incluye ambos aspectos clave de la evidencia: la alfabetización en IA y la capacitación para entender el sistema, citando los fragmentos correspondientes sin añadir información externa."
+        "caveats": "sí",
+        "reason": "La respuesta incluye los elementos clave de la evidencia (alfabetización en IA, consideración de conocimientos y contexto) y no contradice el matices sobre la obligación de medios (no horas concretas)."
       }
     },
     {
       "id": "q05",
       "question": "¿Puede un sistema del Anexo III que elabora perfiles de personas acogerse a las excepciones del artículo 6.3?",
       "answerable": true,
+      "question_type": "inferencial",
+      "difficulty": "difícil",
       "answer": "No, un sistema del Anexo III que elabora perfiles de personas no puede acogerse a las excepciones del artículo 6.3. Según [1734eea3be-0040], si un sistema realiza profiling (evaluación automática de aspectos personales), no beneficia de las excepciones mencionadas en el artículo 6.3. Además, [1734eea3be-0242] indica que en casos donde el sistema afecta decisiones importantes, ninguna de las excepciones aplica.",
       "returned": [
         "1734eea3be-0044",
@@ -156,6 +230,7 @@
         "1734eea3be-0441"
       ],
       "seconds": 3.9,
+      "required_sources_retrieved": true,
       "cited": [
         "1734eea3be-0040",
         "1734eea3be-0242"
@@ -170,13 +245,17 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja correctamente los puntos clave de los fragmentos citados: que el profiling no permite excepciones (1734eea3be-0040) y que en casos de impacto significativo ninguna excepción aplica (1734eea3be-0242)."
+        "caveats": "sí",
+        "reason": "La respuesta confirma que los sistemas de Anexo III que elaboran perfiles no pueden acogerse a las excepciones de artículo 6.3, citando las evidencias proporcionadas y respetando la distinción entre el reglamento y las directrices ilustrativas.",
+        "retried": true
       }
     },
     {
       "id": "q06",
       "question": "Si un proveedor concluye que su sistema del Anexo III no es de alto riesgo, ¿qué tiene que hacer?",
       "answerable": true,
+      "question_type": "inferencial",
+      "difficulty": "media",
       "answer": "Si un proveedor concluye que su sistema del Anexo III no es de alto riesgo, debe documentar su evaluación antes de introducirlo en el mercado o ponerlo en servicio, según [d388ac242a-0010]. Además, está sujeto a la obligación de registro establecida en el artículo 49, apartado 2. Si las autoridades nacionales competentes lo solicitan, el proveedor debe facilitar la documentación de la evaluación [d388ac242a-0010].",
       "returned": [
         "d388ac242a-0010",
@@ -186,6 +265,7 @@
         "fc07f42e0d-0004"
       ],
       "seconds": 3.7,
+      "required_sources_retrieved": true,
       "cited": [
         "d388ac242a-0010"
       ],
@@ -199,13 +279,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta incluye exactamente los requisitos mencionados en la evidencia: documentar la evaluación antes de introducir el sistema en el mercado, la obligación de registro (artículo 49, apartado 2) y la entrega de documentación ante solicitudes de autoridades nacionales, todos ellos respaldados po"
+        "caveats": "sí",
+        "reason": "La respuesta incluye los requisitos esenciales (documentación, registro y entrega de documentos) y no contradice la excepción del artículo 6, apartado 3, ya que no menciona la condición de perfiles, lo cual es relevante solo si el sistema lo hace."
       }
     },
     {
       "id": "q07",
       "question": "¿Cómo debe entenderse el sistema de gestión de riesgos de un sistema de alto riesgo?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "El sistema de gestión de riesgos de un sistema de alto riesgo debe entenderse como un proceso iterativo continuo planificado y ejecutado durante todo el ciclo de vida del sistema [af0f8badb2-0004]. Este proceso incluye la determinación y análisis de riesgos conocidos y previsibles, la estimación y evaluación de riesgos derivados del uso indebido razonablemente previsible, y la adopción de medidas adecuadas para hacer frente a los riesgos detectados [af0f8badb2-0005].",
       "returned": [
         "b31c515458-0007",
@@ -215,6 +298,7 @@
         "af0f8badb2-0021"
       ],
       "seconds": 3.8,
+      "required_sources_retrieved": true,
       "cited": [
         "af0f8badb2-0004",
         "af0f8badb2-0005"
@@ -229,13 +313,16 @@
       "judge": {
         "correct": "parcial",
         "faithful": "sí",
-        "reason": "La respuesta menciona los puntos a, b y d, que están en la evidencia, pero omite el punto c, que también forma parte del sistema de gestión de riesgos."
+        "caveats": "no",
+        "reason": "La respuesta omite la cuarta etapa (evaluación de otros riesgos a partir de la vigilancia poscomercialización) requerida por el texto legal, lo que contradice el matices jurídico de no omitir ninguna de las cuatro etapas."
       }
     },
     {
       "id": "q08",
       "question": "En identificación biométrica remota de alto riesgo, ¿cuántas personas tienen que confirmar una identificación antes de actuar?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "En el caso de los sistemas de IA de alto riesgo, se requiere que al menos dos personas físicas con la competencia, formación y autoridad necesarias verifiquen y confirmen por separado la identificación antes de que el responsable del despliegue actúe o tome una decisión basada en ella [1281d59131-0010]. Este requisito no se aplica en ciertos ámbitos como la garantía del cumplimiento del Derecho, la migración, el control fronterizo o el asilo cuando se considere desproporcionado [1281d59131-0010].",
       "returned": [
         "1281d59131-0010",
@@ -245,6 +332,7 @@
         "adc35a2bfb-0746"
       ],
       "seconds": 4.5,
+      "required_sources_retrieved": true,
       "cited": [
         "1281d59131-0010"
       ],
@@ -258,13 +346,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja exactamente el requisito de dos personas verificando por separado y menciona las excepciones citadas en el texto oficial, sin añadir ni omitir información esencial."
+        "caveats": "sí",
+        "reason": "La respuesta refleja correctamente el requisito de dos personas físicas y menciona la excepción para ámbitos específicos, alineándose con la evidencia y los matices jurídicos."
       }
     },
     {
       "id": "q09",
       "question": "¿En qué momento hay que hacer la evaluación de impacto en los derechos fundamentales?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "La evaluación de impacto relativa a los derechos fundamentales debe realizarse antes del despliegue del sistema de IA de alto riesgo [9a41a15aab-0009]. Además, debe actualizarse cuando el responsable del despliegue considere que alguno de los factores pertinentes ha cambiado [9a41a15aab-0009]. También se menciona que si ya se cumple alguna obligación mediante una evaluación de impacto relativa a la protección de datos, esta se complementa con la evaluación de impacto relativa a los derechos fundamentales [f80079c19c-0009].",
       "returned": [
         "9a41a15aab-0009",
@@ -274,6 +365,7 @@
         "adc35a2bfb-0757"
       ],
       "seconds": 4.1,
+      "required_sources_retrieved": true,
       "cited": [
         "9a41a15aab-0009",
         "f80079c19c-0009"
@@ -288,13 +380,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja exactamente los puntos clave del texto oficial citado: realizar la evaluación antes del despliegue, actualizarla cuando cambien los factores y complementarla con la evaluación de protección de datos si es aplicable."
+        "caveats": "sí",
+        "reason": "La respuesta menciona correctamente el momento (antes del despliegue), la actualización cuando cambien los factores y la complementación con la evaluación de protección de datos, citando los fragmentos relevantes. No contradice los matices sobre la aplicabilidad limitada y la exclusión de sistemas d"
       }
     },
     {
       "id": "q10",
       "question": "Si un deepfake forma parte de una obra satírica o artística, ¿qué obligación de transparencia sigue aplicándose?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "Si un deepfake forma parte de una obra satírica o artística, la obligación de transparencia se limita a hacer pública la existencia de dicho contenido generado o manipulado artificialmente de una manera adecuada que no dificulte la exhibición o el disfrute de la obra [a042e32725-0011]. Esta limitación se aplica cuando el contenido forma parte de una obra manifiestamente creativa, satírica, artística o de ficción [a042e32725-0011].",
       "returned": [
         "a042e32725-0011",
@@ -304,6 +399,7 @@
         "a042e32725-0009"
       ],
       "seconds": 3.8,
+      "required_sources_retrieved": true,
       "cited": [
         "a042e32725-0011"
       ],
@@ -317,13 +413,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja exactamente la limitación de las obligaciones de transparencia mencionada en la evidencia, sin añadir ni omitir información clave."
+        "caveats": "sí",
+        "reason": "La respuesta incluye los elementos clave de la norma (limitación de transparencia para obras creativas, satíricas, artísticas o de ficción) y no contradice los matices sobre la condición de 'manifiestamente creativa, satírica, artística o de ficción'."
       }
     },
     {
       "id": "q11",
       "question": "¿Cómo se fija el tope de una multa para una pyme o empresa emergente?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "El tope de una multa para una pyme o empresa emergente se fija según el porcentaje o el importe establecido en los apartados 3, 4 y 5 del artículo 99, según cuál de ellos sea menor [3be9448c40-0013]. Además, al fijar el importe de la multa, se consideran la naturaleza, gravedad y duración de la infracción, así como los principios de proporcionalidad y adecuación [b206a87a30-0005].",
       "returned": [
         "c42b714243-0011",
@@ -333,6 +432,7 @@
         "adc35a2bfb-0137"
       ],
       "seconds": 3.9,
+      "required_sources_retrieved": true,
       "cited": [
         "3be9448c40-0013",
         "b206a87a30-0005"
@@ -345,15 +445,18 @@
       "keyword": true,
       "refusal": false,
       "judge": {
-        "correct": "sí",
-        "faithful": "sí",
-        "reason": "La respuesta refleja exactamente los criterios del artículo 99 (menor entre porcentaje o importe) y menciona los principios de la artículo 101, sin añadir ni omitir información relevante."
+        "correct": "parcial",
+        "faithful": "no",
+        "caveats": "sí",
+        "reason": "La respuesta incluye información sobre el artículo 101, que no es relevante para el cálculo de multas de pymes, lo que la hace infañada. Sin embargo, el cálculo del tope (menor de porcentaje o importe) es correcto y responde a la pregunta principal."
       }
     },
     {
       "id": "q12",
       "question": "¿Desde cuándo se aplican las obligaciones de los sistemas de alto riesgo del artículo 6, apartado 1?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "fácil",
       "answer": "Las obligaciones de los sistemas de alto riesgo según el artículo 6, apartado 1, se aplicarán a partir de 2 de agosto de 2027, según [3ac9d4a8f1-0013]. Sin embargo, estos plazos han sido pospuestos con el AI Omnibus a 2 de diciembre de 2027 [3ac9d4a8f1-0013].",
       "returned": [
         "3ac9d4a8f1-0013",
@@ -363,6 +466,7 @@
         "60cc19c711-0004"
       ],
       "seconds": 3.3,
+      "required_sources_retrieved": false,
       "cited": [
         "3ac9d4a8f1-0013"
       ],
@@ -376,13 +480,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta menciona correctamente la fecha original de 2027 y su posposición a 2027 (aunque el texto oficial menciona 2028 para el artículo 6(2), la respuesta se centra en el artículo 6(1) y cita la evidencia adecuadamente."
+        "caveats": "sí",
+        "reason": "La respuesta menciona correctamente la fecha original (2027) y la pospuesta a 2027, citando la evidencia adecuada sin contradecir los matices sobre el texto de 2024."
       }
     },
     {
       "id": "q13",
       "question": "¿Para cuándo debe tener cada Estado miembro un espacio controlado de pruebas para la IA?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "fácil",
       "answer": "Cada Estado miembro debe tener un espacio controlado de pruebas para la IA operativo a más tardar el 2 de agosto de 2026 [c3e2d750d0-0002]. Esto se establece en el Artículo 57 del Reglamento.",
       "returned": [
         "c3e2d750d0-0002",
@@ -392,6 +499,7 @@
         "c3e2d750d0-0008"
       ],
       "seconds": 2.6,
+      "required_sources_retrieved": true,
       "cited": [
         "c3e2d750d0-0002"
       ],
@@ -405,25 +513,28 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta cita correctamente el artículo y la fecha clave del Reglamento, sin añadir información no presente en la evidencia."
+        "caveats": "sí",
+        "reason": "La respuesta menciona la fecha clave (2 de agosto de 2026) y referencia el artículo 57, sin añadir información no presente en la evidencia. Aunque no detalla la posibilidad de establecer el espacio conjuntamente con otros Estados miembros, esta mención no es esencial para la respuesta a la pregunta "
       }
     },
     {
       "id": "q14",
-      "question": "¿Cuál es el plazo máximo para notificar un incidente grave de un sistema de alto riesgo?",
+      "question": "En el caso general, sin fallecimientos ni infracciones generalizadas, ¿cuál es el plazo máximo para notificar un incidente grave de un sistema de alto riesgo?",
       "answerable": true,
-      "answer": "El plazo máximo para notificar un incidente grave de un sistema de alto riesgo varía según la situación. En general, la notificación se efectúa inmediatamente después de establecer una relación causal entre el sistema de IA y el incidente grave, o a más tardar quince días después de tener conocimiento del incidente [6feb46dfaa-0003]. Sin embargo, en el caso de fallecimiento de una persona, el plazo se reduce a diez días [6feb46dfaa-0007].",
+      "question_type": "factual",
+      "difficulty": "media",
+      "answer": "En el caso general, sin fallecimientos ni infracciones generalizadas, el plazo máximo para notificar un incidente grave de un sistema de alto riesgo es de quince días después de que el proveedor o el responsable del despliegado tengan conocimiento del incidente grave [6feb46dfaa-0003].",
       "returned": [
         "fb563576e0-0010",
-        "6feb46dfaa-0003",
-        "6feb46dfaa-0007",
         "6feb46dfaa-0019",
-        "6feb46dfaa-0015"
-      ],
-      "seconds": 3.7,
-      "cited": [
         "6feb46dfaa-0003",
+        "6feb46dfaa-0005",
         "6feb46dfaa-0007"
+      ],
+      "seconds": 3.1,
+      "required_sources_retrieved": true,
+      "cited": [
+        "6feb46dfaa-0003"
       ],
       "invalid_citations": [],
       "citations_valid": true,
@@ -435,26 +546,30 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja correctamente los plazos de 15 días y 10 días según los fragmentos citados, sin añadir información externa."
+        "caveats": "sí",
+        "reason": "La respuesta refleja correctamente el plazo general de quince días, cita la evidencia mencionada y no contradice los matices jurídicos al limitarse al caso general sin excepciones."
       }
     },
     {
       "id": "q15",
-      "question": "¿Se aplica el reglamento a los sistemas de IA publicados con licencia de código abierto?",
+      "question": "¿Queda un sistema de IA fuera del reglamento por publicarse con licencia libre y de código abierto?",
       "answerable": true,
-      "answer": "El Reglamento no se aplica a los sistemas de IA divulgados con arreglo a licencias libres y de código abierto, salvo que se introduzcan en el mercado o se pongan en servicio como sistemas de IA de alto riesgo o como sistemas que entren en el ámbito de aplicación del artículo 5 o del artículo 50 [60cc19c711-0024]. Además, según [adc35a2bfb-0109], los proveedores no pueden acogerse a esta exclusión si el sistema constituye una práctica prohibida. [a2419f72ed-0004] también menciona que los modelos de IA de uso general divulgados con licencia libre deben estar sujetos a excepciones salvo que presenten riesgos sistémicos.",
+      "question_type": "inferencial",
+      "difficulty": "media",
+      "answer": "Sí, un sistema de IA puede quedar fuera del Reglamento si se divulga con arreglo a licencias libres y de código abierto, salvo que se introduzca en el mercado o se ponga en servicio como sistema de IA de alto riesgo o como sistema que entra en el ámbito de aplicación del artículo 5 o del artículo 50 [60cc19c711-0024]. Además, según [5dc841293a-0008] y [ef8db8c68f-0012], las obligaciones del Reglamento no se aplican a los proveedores de modelos de IA de uso general que se divulguen con licencias libres y de código abierto, salvo si estos modelos presentan riesgos sistémicos.",
       "returned": [
         "60cc19c711-0024",
         "adc35a2bfb-0109",
-        "ef8db8c68f-0012",
         "5dc841293a-0008",
-        "a2419f72ed-0004"
+        "a2419f72ed-0004",
+        "ef8db8c68f-0012"
       ],
-      "seconds": 4.8,
+      "seconds": 4.9,
+      "required_sources_retrieved": true,
       "cited": [
         "60cc19c711-0024",
-        "adc35a2bfb-0109",
-        "a2419f72ed-0004"
+        "5dc841293a-0008",
+        "ef8db8c68f-0012"
       ],
       "invalid_citations": [],
       "citations_valid": true,
@@ -466,13 +581,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja exactamente lo establecido en los fragmentos citados sin añadir información no presente en ellos."
+        "caveats": "sí",
+        "reason": "La respuesta refleja correctamente la exclusión bajo licencias libres, menciona las excepciones clave (alto riesgo, artículos 5 y 50) y cita las referencias pertinentes, respetando los matices jurídicos."
       }
     },
     {
       "id": "q16",
       "question": "¿A partir de qué cómputo de entrenamiento se presume que un modelo de uso general tiene riesgo sistémico?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "A partir de una cantidad acumulada de cálculo utilizado para el entrenamiento, medida en operaciones de coma flotante, superior a $10^{25}$, se presume que un modelo de IA de uso general tiene riesgo sistémico [a438d1e14e-0004].",
       "returned": [
         "0a423d7f00-0001",
@@ -482,6 +600,7 @@
         "0a423d7f00-0003"
       ],
       "seconds": 2.8,
+      "required_sources_retrieved": true,
       "cited": [
         "a438d1e14e-0004"
       ],
@@ -495,13 +614,17 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta reproduce exactamente la condición del texto oficial citado ([a438d1e14e-0004]) sin añadir ni omitir información esencial."
+        "caveats": "no",
+        "reason": "La respuesta no menciona que la presunción puede ser modificada por la Comisión, lo cual es un matices jurídico relevante.",
+        "retried": true
       }
     },
     {
       "id": "q17",
       "question": "¿Qué tienen que publicar los proveedores de modelos de uso general sobre los datos de entrenamiento?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "fácil",
       "answer": "Los proveedores de modelos de IA de uso general tienen que publicar un resumen suficientemente detallado del contenido utilizado para el entrenamiento del modelo [5dc841293a-0006]. Además, deben elaborar y poner a disposición del público esta información [5dc841293a-0001]. También deben incluir información sobre los datos utilizados para el entrenamiento, las pruebas y la validación, así como el tipo y la procedencia de los datos [94d4dfdbf7-0007].",
       "returned": [
         "a2419f72ed-0007",
@@ -511,6 +634,7 @@
         "5dc841293a-0006"
       ],
       "seconds": 3.4,
+      "required_sources_retrieved": true,
       "cited": [
         "5dc841293a-0006",
         "5dc841293a-0001",
@@ -526,13 +650,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta menciona correctamente el resumen detallado del contenido de entrenamiento (artículo 53, d) y la información sobre datos, pruebas y validación (anexo XI), citando fragmentos relevantes."
+        "caveats": "n/a",
+        "reason": "La respuesta incluye los requisitos clave del artículo 53, d), y menciona los detalles de los datos en el anexo XI, citando fragmentos relevantes sin añadir información no respaldada."
       }
     },
     {
       "id": "q18",
       "question": "¿Puede un proveedor tratar datos personales de categorías especiales para detectar sesgos?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "Sí, un proveedor puede tratar datos personales de categorías especiales para detectar sesgos, siempre que cumplan con las condiciones establecidas en el artículo 10, apartado 2, letras f) y g), del presente artículo [e5f277bc93-0010]. Además, deben cumplirse todas las condiciones mencionadas en el artículo 10, incluida la necesidad de garantías adecuadas para los derechos y libertades fundamentales [e5f277bc93-0010].",
       "returned": [
         "e5f277bc93-0010",
@@ -542,6 +669,7 @@
         "b31c515458-0003"
       ],
       "seconds": 3.7,
+      "required_sources_retrieved": true,
       "cited": [
         "e5f277bc93-0010"
       ],
@@ -555,13 +683,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja correctamente la autorización del tratamiento de datos especiales para detectar sesgos bajo el artículo 10, y cita directamente el fragmento referenciado sin añadir información externa."
+        "caveats": "sí",
+        "reason": "La respuesta confirma la excepción con condiciones (artículo 10, apartado 2, letras f) y g), y menciona las garantías adecuadas, sin añadir ni contradecir lo establecido en la evidencia."
       }
     },
     {
       "id": "q19",
       "question": "Si me afecta una decisión tomada con un sistema de alto riesgo, ¿qué derecho tengo?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "Si me afecta una decisión tomada con un sistema de IA de alto riesgo, tengo derecho a obtener explicaciones claras y significativas acerca del papel que el sistema ha tenido en la decisión y los principales elementos de dicha decisión [b9f2580663-0001]. Este derecho se aplica cuando la decisión produce efectos jurídicos o tiene un impacto significativo en mi salud, seguridad o derechos fundamentales [4d65dca5fb-0001].",
       "returned": [
         "b9f2580663-0001",
@@ -571,6 +702,7 @@
         "f80079c19c-0003"
       ],
       "seconds": 3.5,
+      "required_sources_retrieved": true,
       "cited": [
         "b9f2580663-0001",
         "4d65dca5fb-0001"
@@ -585,13 +717,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja correctamente el derecho a explicaciones claras y significativas según los fragmentos citados, sin añadir ni omitir información esencial."
+        "caveats": "no",
+        "reason": "La respuesta no menciona las excepciones específicas del Anexo III y el derecho nacional/uniónico, lo que contradice los matices jurídicos."
       }
     },
     {
       "id": "q20",
       "question": "¿Tienen que avisar los responsables del despliegue a las personas sobre las que un sistema del Anexo III ayuda a decidir?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "fácil",
       "answer": "Sí, los responsables del despliegue tienen que avisar a las personas sobre las que un sistema del Anexo III ayuda a decidir. Según el artículo 26, los responsables deben informar a las personas físicas de que están expuestas a la utilización de los sistemas de IA de alto riesgo [fb563576e0-0027]. Además, el considerando 91-100 destaca que los responsables del despliegue deben informar a las personas físicas cuando tomen decisiones o ayuden a tomar decisiones relacionadas con ellas [9a41a15aab-0004].",
       "returned": [
         "fb563576e0-0027",
@@ -601,6 +736,7 @@
         "9c7896a916-0003"
       ],
       "seconds": 4.3,
+      "required_sources_retrieved": true,
       "cited": [
         "fb563576e0-0027",
         "9a41a15aab-0004"
@@ -615,13 +751,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta cita directamente los fragmentos referidos (artículo 26 y considerandos 91-100) y refleja fielmente el contenido de la evidencia sin añadir ni omitir información."
+        "caveats": "sí",
+        "reason": "La respuesta confirma la obligación general de informar (Artículo 26) y menciona los considerandos 91-100, sin añadir ni omitir información relevante. No contradice la mención del artículo 13 de la Directiva (UE) 2016/680, ya que la pregunta no aborda la excepción específica."
       }
     },
     {
       "id": "q21",
       "question": "¿Está permitido montar una base de datos de reconocimiento facial con fotos descargadas de internet?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "fácil",
       "answer": "No está permitido montar una base de datos de reconocimiento facial con fotos descargadas de internet, ya que la extracción no selectiva de imágenes faciales de internet para crear o ampliar bases de datos de reconocimiento facial es prohibida [3edd142e29-0003]. Además, el RGPD y la Directiva sobre protección de datos en el ámbito penal consideran que este tipo de tratamiento de datos personales sería ilícito [adc35a2bfb-0519]. La prohibición se aplica a las herramientas de extracción introducidas en el mercado o puestas en servicio para este fin específico [adc35a2bfb-0509].",
       "returned": [
         "adc35a2bfb-0519",
@@ -631,6 +770,7 @@
         "adc35a2bfb-0517"
       ],
       "seconds": 4.4,
+      "required_sources_retrieved": true,
       "cited": [
         "3edd142e29-0003",
         "adc35a2bfb-0519",
@@ -646,13 +786,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja correctamente la prohibición de la extracción no selectiva de imágenes faciales de internet y cita los fragmentos clave de la evidencia sin añadir información externa."
+        "caveats": "sí",
+        "reason": "La respuesta refleja correctamente la prohibición de la extracción no selectiva, cita las fuentes relevantes y respeta el matices sobre la condición de 'extracción no selectiva'."
       }
     },
     {
       "id": "q22",
       "question": "¿Es de alto riesgo una herramienta que solo organiza la logística de una campaña electoral?",
       "answerable": true,
+      "question_type": "caso_practico",
+      "difficulty": "media",
       "answer": "Sí, una herramienta que solo organiza la logística de una campaña electoral no es de alto riesgo, según [1734eea3be-0500], que indica que estos sistemas están excluidos de la clasificación como sistemas de IA de alto riesgo por el segundo párrafo del punto 8(b) del Anexo III. Esto se basa en el hecho de que no influyen directamente en el resultado de una elección o en el comportamiento electoral de las personas físicas.",
       "returned": [
         "b31c515458-0002",
@@ -662,6 +805,7 @@
         "1734eea3be-0495"
       ],
       "seconds": 3.8,
+      "required_sources_retrieved": true,
       "cited": [
         "1734eea3be-0500"
       ],
@@ -675,13 +819,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta confirma la exclusión de sistemas de logística electoral de alto riesgo según el texto referenciado, citando específicamente el segundo párrafo del punto 8(b) del Anexo III, sin añadir información no presente en la evidencia."
+        "caveats": "sí",
+        "reason": "La respuesta confirma la exclusión de sistemas de logística electoral según el Anexo III, sin contradecir la excepción sobre la influencia directa en el voto, que no es relevante para el caso específico descrito."
       }
     },
     {
       "id": "q23",
       "question": "¿Qué debe recoger la descripción general en la documentación técnica de un sistema de alto riesgo?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "difícil",
       "answer": "La descripción general en la documentación técnica de un sistema de alto riesgo debe recoger las características generales, las capacidades y las limitaciones del sistema, así como los algoritmos, datos y procesos de entrenamiento, prueba y validación empleados [be05224669-0001]. Además, debe incluir una descripción de la intención de uso del sistema de inteligencia artificial [1734eea3be-0048].",
       "returned": [
         "3ac9d4a8f1-0008",
@@ -691,6 +838,7 @@
         "3ac9d4a8f1-0007"
       ],
       "seconds": 3.4,
+      "required_sources_retrieved": false,
       "cited": [
         "be05224669-0001",
         "1734eea3be-0048"
@@ -705,13 +853,16 @@
       "judge": {
         "correct": "parcial",
         "faithful": "sí",
-        "reason": "La respuesta incluye la intención de uso (de [1734eea3be-0048]) y elementos como características generales, algoritmos, datos y procesos (de [be05224669-0001]), pero omite la mención explícita del nombre del proveedor y la versión del sistema, que son esenciales según la evidencia de referencia (aia"
+        "caveats": "sí",
+        "reason": "La respuesta incluye elementos clave de la evidencia (características, capacidades, intención de uso) pero omite puntos esenciales como el nombre del proveedor, la versión del sistema, la interacción con hardware/software, etc., lo que la hace parcial. Sin embargo, todo lo citado está en los fragmen"
       }
     },
     {
       "id": "q24",
       "question": "¿Qué pueden aplicar de forma voluntaria los sistemas que no son de alto riesgo?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "Los sistemas que no son de alto riesgo pueden aplicar de forma voluntaria los requisitos establecidos en el capítulo III, sección 2, mediante la elaboración de códigos de conducta con mecanismos de gobernanza, según [1acce400c4-0002].",
       "returned": [
         "1acce400c4-0002",
@@ -721,6 +872,7 @@
         "fc07f42e0d-0001"
       ],
       "seconds": 2.6,
+      "required_sources_retrieved": true,
       "cited": [
         "1acce400c4-0002"
       ],
@@ -734,13 +886,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja exactamente el contenido del fragmento citado, incluyendo la aplicación voluntaria de los requisitos mediante códigos de conducta y mecanismos de gobernanza, sin añadir ni omitir información clave."
+        "caveats": "sí",
+        "reason": "La respuesta refleja exactamente el contenido de la evidencia y la respuesta de referencia, incluyendo la voluntariedad, la aplicación de requisitos del capítulo III, sección 2, y la referencia al código de conducta con mecanismos de gobernanza."
       }
     },
     {
       "id": "q25",
       "question": "¿Necesita un sistema de selección de personal del Anexo III un organismo notificado para la evaluación de la conformidad?",
       "answerable": true,
+      "question_type": "caso_practico",
+      "difficulty": "media",
       "answer": "Según el artículo 43, en el caso de los sistemas de IA de alto riesgo mencionados en el anexo III, puntos 2 a 8, los proveedores se atendrán al procedimiento de evaluación de la conformidad fundamentado en un control interno, que no contempla la participación de un organismo notificado [09911db1f0-0005]. Por lo tanto, no se requiere un organismo notificado para la evaluación de la conformidad de estos sistemas.",
       "returned": [
         "cdb43ea934-0008",
@@ -750,6 +905,7 @@
         "09911db1f0-0002"
       ],
       "seconds": 3.7,
+      "required_sources_retrieved": true,
       "cited": [
         "09911db1f0-0005"
       ],
@@ -763,13 +919,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja exactamente el contenido del fragmento citado, afirmando que el procedimiento se basa en control interno sin necesidad de un organismo notificado, como establece la evidencia de referencia."
+        "caveats": "sí",
+        "reason": "La respuesta confirma la no necesidad de un organismo notificado para sistemas del Anexo III (puntos 2-8), alineándose con la evidencia y no contradiciendo los matices sobre los sistemas biométricos del punto 1, que no forman parte de la pregunta."
       }
     },
     {
       "id": "q26",
       "question": "¿Dónde deben registrar los proveedores sus sistemas de alto riesgo del Anexo III?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "fácil",
       "answer": "Los proveedores deben registrar sus sistemas de IA de alto riesgo del Anexo III en la base de datos de la UE [de672743c7-0001]. Sin embargo, los sistemas de alto riesgo mencionados en el Anexo III, punto 2, se registrarán a nivel nacional [de672743c7-0010].",
       "returned": [
         "d388ac242a-0010",
@@ -779,6 +938,7 @@
         "de672743c7-0005"
       ],
       "seconds": 2.6,
+      "required_sources_retrieved": true,
       "cited": [
         "de672743c7-0001",
         "de672743c7-0010"
@@ -793,13 +953,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja exactamente los dos fragmentos citados: el registro en la base de datos de la UE (de672743c7-0001) y el registro nacional para el punto 2 del Anexo III (de672743c7-0010), sin añadir ni omitir información."
+        "caveats": "sí",
+        "reason": "La respuesta distingue claramente entre el registro en la base de datos de la UE (para el Anexo III) y el registro nacional (para el Anexo III, punto 2), alineándose con los fragmentos citados y respetando el matices jurídico sobre el registro nacional."
       }
     },
     {
       "id": "q27",
       "question": "¿Qué deben montar los proveedores para vigilar un sistema de alto riesgo una vez comercializado?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "fácil",
       "answer": "Los proveedores deben establecer y documentar un sistema de vigilancia poscomercialización de forma proporcionada a la naturaleza de las tecnologías de IA y a los riesgos de los sistemas de IA de alto riesgo [0e2dd75f24-0002]. Este sistema recopilará, documentará y analizará de manera activa y sistemática los datos pertinentes sobre el funcionamiento de los sistemas de IA durante toda su vida útil [0e2dd75f24-0004]. Además, cuando proceda, la vigilancia poscomercialización incluirá un análisis de la interacción con otros sistemas de IA [0e2dd75f24-0004].",
       "returned": [
         "0e2dd75f24-0009",
@@ -809,6 +972,7 @@
         "0e2dd75f24-0004"
       ],
       "seconds": 4.4,
+      "required_sources_retrieved": true,
       "cited": [
         "0e2dd75f24-0002",
         "0e2dd75f24-0004"
@@ -823,13 +987,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja exactamente los requisitos de la evidencia: establecer y documentar un sistema de vigilancia poscomercialización, recopilar datos activamente y analizar interacciones con otros sistemas de IA, sin añadir ni omitir información clave."
+        "caveats": "sí",
+        "reason": "La respuesta incluye todos los elementos clave de la evidencia (establecer y documentar el sistema, recopilar datos, análisis de interacción) y cita correctamente los fragmentos referenciados sin añadir información no presente en el texto oficial."
       }
     },
     {
       "id": "q28",
       "question": "¿Se permite el reconocimiento de emociones en el trabajo si es por motivos de seguridad?",
       "answerable": true,
+      "question_type": "inferencial",
+      "difficulty": "media",
       "answer": "Según [adc35a2bfb-0593], la excepción para el uso de sistemas de reconocimiento de emociones en lugares de trabajo y centros educativos por motivos médicos o de seguridad está establecida. Sin embargo, [adc35a2bfb-0595] indica que el seguimiento general de los niveles de estrés en el lugar de trabajo no está permitido, salvo que suponga un peligro específico. Por lo tanto, el reconocimiento de emociones en el trabajo por motivos de seguridad solo está permitido en casos específicos donde exista un peligro inmediato.",
       "returned": [
         "adc35a2bfb-0595",
@@ -839,6 +1006,7 @@
         "adc35a2bfb-0578"
       ],
       "seconds": 4.3,
+      "required_sources_retrieved": true,
       "cited": [
         "adc35a2bfb-0593",
         "adc35a2bfb-0595"
@@ -853,13 +1021,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja correctamente la excepción para motivos médicos o de seguridad y menciona la restricción a casos específicos, alineándose con los fragmentos citados."
+        "caveats": "no",
+        "reason": "La respuesta menciona la excepción para 'peligro inmediato', pero no incluye la interpretación restrictiva requerida (expertos, necesidad objetiva, duración limitada), lo cual contradice los matices jurídicos sobre la restricción de la excepción."
       }
     },
     {
       "id": "q29",
       "question": "¿Qué obligación tienen los proveedores de chatbots hacia los usuarios?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "fácil",
       "answer": "Los proveedores de chatbots tienen la obligación de garantizar que los usuarios sepan que están interactuando con un sistema de IA, salvo cuando sea evidente para una persona razonable [a042e32725-0002]. Además, deben evitar que sus sistemas causen perjuicios significativos, incluso si no tuvieron intención de ello, y tomar medidas para prevenir comportamientos prohibidos [adc35a2bfb-0199]. También deben incluir información adecuada en las instrucciones de uso y excluir el uso de su sistema para prácticas prohibidas [adc35a2bfb-0115].",
       "returned": [
         "a042e32725-0002",
@@ -869,6 +1040,7 @@
         "adc35a2bfb-0200"
       ],
       "seconds": 4.1,
+      "required_sources_retrieved": true,
       "cited": [
         "a042e32725-0002",
         "adc35a2bfb-0199",
@@ -882,15 +1054,18 @@
       "keyword": true,
       "refusal": false,
       "judge": {
-        "correct": "sí",
+        "correct": "parcial",
         "faithful": "sí",
-        "reason": "La respuesta aborda las obligaciones clave mencionadas en los fragmentos: transparencia (artículo 50), prevención de daños y prácticas prohibidas (directrices C(2025) 5052), y inclusión de información en instrucciones (directrices C(2025) 5052), sin añadir ni omitir elementos esenciales."
+        "caveats": "sí",
+        "reason": "La respuesta incluye la obligación de transparencia y menciona excepciones (evidencia para una persona razonable), pero agrega elementos como la prevención de daños y prácticas prohibidas, que aunque están en la evidencia, no son esenciales para la pregunta específica sobre la obligación hacia los u"
       }
     },
     {
       "id": "q30",
       "question": "¿Cómo hay que marcar el contenido sintético que genera una IA?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "fácil",
       "answer": "El contenido sintético generado por una IA debe ser marcado en un formato legible por máquina y debe ser posible detectar que ha sido generado o manipulado por un sistema de IA, según se establece en [7561473017-0007]. Los proveedores deben asegurar que sus soluciones técnicas sean eficaces, interoperables, sólidas y fiables, teniendo en cuenta las técnicas disponibles, como marcas de agua, identificación de metadatos, métodos criptográficos, entre otros, según [7561473017-0007]. Además, cuando el contenido forma parte de una obra creativa, satírica, artística o de ficción, la transparencia se limita a hacer pública la existencia del contenido generado artificialmente de manera adecuada, según [a042e32725-0011].",
       "returned": [
         "7561473017-0007",
@@ -900,6 +1075,7 @@
         "7561473017-0009"
       ],
       "seconds": 5.2,
+      "required_sources_retrieved": true,
       "cited": [
         "7561473017-0007",
         "a042e32725-0011"
@@ -914,13 +1090,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja exactamente los requisitos de marcado en formato legible por máquina y menciona las soluciones técnicas y limitaciones específicas citadas en los fragmentos, sin añadir ni omitir información clave."
+        "caveats": "sí",
+        "reason": "La respuesta refleja correctamente la obligación de los proveedores de marcar el contenido sintético en formato legible por máquina, menciona las técnicas técnicas mencionadas en la evidencia y respeta la distinción entre la obligación del proveedor y el responsable del despliegue, aunque no detalla"
       }
     },
     {
       "id": "q31",
       "question": "¿Desde qué fecha se aplican las prohibiciones del capítulo II?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "fácil",
       "answer": "Las prohibiciones del capítulo II se aplican a partir del 2 de febrero de 2025, según el artículo 113 del Reglamento de Inteligencia Artificial [4a03936184-0000]. Además, el artículo 5 del Reglamento de Inteligencia Artificial, que incluye estas prohibiciones, se aplica a partir de esa fecha [adc35a2bfb-0919].",
       "returned": [
         "adc35a2bfb-0921",
@@ -930,6 +1109,7 @@
         "adc35a2bfb-0919"
       ],
       "seconds": 3.2,
+      "required_sources_retrieved": true,
       "cited": [
         "4a03936184-0000",
         "adc35a2bfb-0919"
@@ -944,13 +1124,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta cita directamente la fecha del 2 de febrero de 2025 según la evidencia y no añade información extra."
+        "caveats": "sí",
+        "reason": "La respuesta cita correctamente los fragmentos referidos y confirma la fecha de aplicación del capítulo II sin añadir información no respaldada, respetando la evidencia proporcionada."
       }
     },
     {
       "id": "q32",
       "question": "¿Cuál es la multa máxima por usar una práctica de IA prohibida?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "fácil",
       "answer": "La multa máxima por usar una práctica de IA prohibida es de hasta 35 000 000 EUR, según [adc35a2bfb-0137] y [3be9448c40-0006]. Este monto se aplica a los proveedores y responsables del despliegue que lleven a cabo dichas prácticas. Si el infractor es una empresa, la multa puede ser hasta el 7 % de su volumen de negocios mundial total, siempre que esta cuantía sea superior.",
       "returned": [
         "adc35a2bfb-0137",
@@ -960,6 +1143,7 @@
         "adc35a2bfb-0072"
       ],
       "seconds": 3.7,
+      "required_sources_retrieved": true,
       "cited": [
         "adc35a2bfb-0137",
         "3be9448c40-0006"
@@ -974,13 +1158,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta menciona correctamente los 35 millones de euros y el 7% de volumen de negocios, ambos presentes en los fragmentos citados, sin añadir información no contenida en la evidencia."
+        "caveats": "sí",
+        "reason": "La respuesta menciona ambos límites (35M y 7% de volumen de negocios) y cita las fuentes correspondientes, sin añadir información no presente en la evidencia. No menciona la excepción para pymes, pero la pregunta se centra en la multa máxima, no en su aplicación a pymes."
       }
     },
     {
       "id": "q33",
       "question": "¿Por qué desconfía el legislador de los sistemas de reconocimiento de emociones?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "El legislador desconfía de los sistemas de reconocimiento de emociones debido a sus limitaciones científicas, como su baja fiabilidad, falta de especificidad y limitada generalizabilidad, lo cual puede afectar los derechos fundamentales de las personas [1734eea3be-0128]. Además, estos sistemas son intrusivos y pueden inferir emociones o intenciones basándose en datos biométricos, lo que plantea preocupaciones sobre la privacidad y la interpretación cultural de las emociones [b537ab8c01-0008].",
       "returned": [
         "adc35a2bfb-0606",
@@ -990,6 +1177,7 @@
         "adc35a2bfb-0553"
       ],
       "seconds": 3.9,
+      "required_sources_retrieved": true,
       "cited": [
         "1734eea3be-0128",
         "b537ab8c01-0008"
@@ -1004,13 +1192,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta menciona las limitaciones científicas (fiabilidad, especificidad, generalizabilidad) y la intrusividad, coincidiendo con los fragmentos citados, sin añadir información externa ni contradecir la evidencia."
+        "caveats": "sí",
+        "reason": "La respuesta incluye los puntos clave de fiabilidad, especificidad y generalizabilidad, y menciona intrusividad y privacidad, todos ellos respaldados por los fragmentos citados. No introduce elementos no presentes en la evidencia ni contradice matices jurídicos."
       }
     },
     {
       "id": "q34",
       "question": "¿Qué riesgos ve el legislador en la puntuación ciudadana?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "El legislador ve riesgos en la puntuación ciudadana, como efectos discriminatorios e injustos para determinadas personas y colectivos, así como prácticas de control y vigilancia sociales incompatibles con los valores de la Unión [adc35a2bfb-0345]. Además, la puntuación ciudadana puede infringir la legislación de la Unión en materia de protección de datos y llevar a tratos perjudiciales o desfavorables, incluso si están justificados [adc35a2bfb-0422]. También se considera que la puntuación ciudadana puede dar lugar a tratos injustificados o desproporcionados en relación con el comportamiento social [adc35a2bfb-0390].",
       "returned": [
         "adc35a2bfb-0343",
@@ -1020,6 +1211,7 @@
         "adc35a2bfb-0390"
       ],
       "seconds": 4.7,
+      "required_sources_retrieved": false,
       "cited": [
         "adc35a2bfb-0345",
         "adc35a2bfb-0422",
@@ -1035,13 +1227,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta aborda los riesgos discriminadores, el impacto en los derechos fundamentales y la incompatibilidad con los valores de la Unión, alineándose con los fragmentos citados sin añadir información externa."
+        "caveats": "sí",
+        "reason": "La respuesta aborda los riesgos mencionados en la evidencia, incluyendo efectos discriminadores, incompatibilidad con los valores de la Unión, incumplimiento de la legislación de protección de datos y tratos injustificados, sin añadir información no presente en los fragmentos citados."
       }
     },
     {
       "id": "q35",
       "question": "Según los considerandos, ¿para qué sirve la alfabetización en materia de IA?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "Según los considerandos, la alfabetización en materia de IA sirve para dotar a los proveedores, responsables del despliegue y personas afectadas de los conceptos necesarios para tomar decisiones con conocimiento de causa en relación con los sistemas de IA [b537ab8c01-0011]. Además, debe proporcionar a todos los agentes pertinentes de la cadena de valor de la IA los conocimientos necesarios para garantizar el cumplimiento adecuo y la correcta ejecución [b537ab8c01-0011]. También se menciona que la alfabetización debe incluir la comprensión de los beneficios, los riesgos, las salvaguardias, los derechos y las obligaciones en relación con el uso de sistemas de IA [b537ab8c01-0012].",
       "returned": [
         "b537ab8c01-0011",
@@ -1051,6 +1246,7 @@
         "7b4ac2d36d-0006"
       ],
       "seconds": 5.2,
+      "required_sources_retrieved": true,
       "cited": [
         "b537ab8c01-0011",
         "b537ab8c01-0012"
@@ -1065,13 +1261,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja exactamente los puntos clave del texto oficial citado, sin añadir ni omitir información esencial."
+        "caveats": "n/a",
+        "reason": "La respuesta incluye los puntos clave de la referencia y cita las fuentes correspondientes, sin añadir información no justificada."
       }
     },
     {
       "id": "q36",
       "question": "¿Son vinculantes las directrices de la Comisión sobre prácticas prohibidas?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "fácil",
       "answer": "No, las directrices de la Comisión sobre prácticas prohibidas no son vinculantes. Esto se especifica en [adc35a2bfb-0063] y [ad9634a440-0005], donde se menciona claramente que \"las presentes directrices no son vinculantes\".",
       "returned": [
         "adc35a2bfb-0063",
@@ -1081,6 +1280,7 @@
         "adc35a2bfb-0916"
       ],
       "seconds": 2.4,
+      "required_sources_retrieved": true,
       "cited": [
         "adc35a2bfb-0063",
         "ad9634a440-0005"
@@ -1095,13 +1295,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta reproduce exactamente la afirmación clave de la evidencia («Las presentes directrices no son vinculantes») y cita los fragmentos correspondientes sin añadir información externa."
+        "caveats": "n/a",
+        "reason": "La respuesta confirma correctamente que las directrices no son vinculantes, citando los fragmentos relevantes sin añadir información extra."
       }
     },
     {
       "id": "q37",
       "question": "A efectos de la prohibición del reconocimiento de emociones, ¿cuenta el proceso de selección de candidatos como lugar de trabajo?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "Sí, el proceso de selección de candidatos cuenta como «lugares de trabajo» para la aplicación de la prohibición del reconocimiento de emociones, según el artículo 5, apartado 1, letra f), del Reglamento de Inteligencia Artificial, ya que se aplica a los candidatos durante este proceso [adc35a2bfb-0576]. Además, el uso de sistemas de reconocimiento de emociones durante el proceso de contratación está expresamente prohibido [adc35a2bfb-0578].",
       "returned": [
         "adc35a2bfb-0576",
@@ -1111,6 +1314,7 @@
         "adc35a2bfb-0578"
       ],
       "seconds": 4.0,
+      "required_sources_retrieved": true,
       "cited": [
         "adc35a2bfb-0576",
         "adc35a2bfb-0578"
@@ -1125,24 +1329,29 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta cita directamente los fragmentos de referencia y afirma lo esencial: que el proceso de selección se considera «lugares de trabajo» y que el uso de reconocimiento de emociones en contratación está prohibido, sin añadir información no presente en la evidencia."
+        "caveats": "sí",
+        "reason": "La respuesta confirma la aplicación del concepto de 'lugares de trabajo' a la selección de candidatos y menciona la prohibición explícita, citando las fuentes correspondientes. No contradice la mención de que se trata de una interpretación de directrices no vinculantes, ya que no afirma que sea un r"
       }
     },
     {
       "id": "q38",
-      "question": "Según las directrices, ¿deducir que un empleado está enfadado porque no sonríe es reconocimiento de emociones?",
+      "question": "Según las directrices, si un sistema de IA analiza la cara de un empleado y deduce que está enfadado porque no sonríe, ¿es eso reconocimiento de emociones?",
       "answerable": true,
-      "answer": "Según las directrices, deducir que un empleado está enfadado porque no sonríe es «reconocimiento de emociones». Esto se basa en el pasaje [adc35a2bfb-0558], que establece que «que un sistema de IA deduzca que un empleado está descontento, triste o enfadado con los clientes... es «reconocimiento de emociones».",
+      "question_type": "caso_practico",
+      "difficulty": "media",
+      "answer": "Según las directrices, deducir que una persona está enfadada porque no sonríe es «reconocimiento de emociones» [adc35a2bfb-0558]. Esto se debe a que el sistema de IA deduce emociones a partir de gestos corporales, como la ausencia de sonrisa [adc35a2bfb-0558]. Sin embargo, si el sistema solo detecta expresiones obvias sin inferir emociones, no se considera reconocimiento de emociones [adc35a2bfb-0553]. En este caso, la deducción de enfado a partir de la falta de sonrisa implica inferencia de emociones, por lo que sí es reconocimiento de emociones.",
       "returned": [
         "adc35a2bfb-0558",
-        "adc35a2bfb-0555",
-        "adc35a2bfb-0603",
-        "adc35a2bfb-0578",
-        "adc35a2bfb-0610"
+        "adc35a2bfb-0520",
+        "adc35a2bfb-0551",
+        "adc35a2bfb-0553",
+        "adc35a2bfb-0555"
       ],
-      "seconds": 3.6,
+      "seconds": 5.3,
+      "required_sources_retrieved": true,
       "cited": [
-        "adc35a2bfb-0558"
+        "adc35a2bfb-0558",
+        "adc35a2bfb-0553"
       ],
       "invalid_citations": [],
       "citations_valid": true,
@@ -1153,14 +1362,17 @@
       "refusal": false,
       "judge": {
         "correct": "sí",
-        "faithful": "sí",
-        "reason": "La respuesta cita directamente el fragmento [adc35a2bfb-0558] y confirma que la deducción de enfado a partir de la ausencia de sonrisa es «reconocimiento de emociones», como establece la evidencia."
+        "faithful": "no",
+        "caveats": "sí",
+        "reason": "La respuesta afirma correctamente que la deducción de enfado a partir de la ausencia de sonrisa es reconocimiento de emociones, pero añade una condición (detección de expresiones obvias sin inferencia) que no está explícitamente en los fragmentos citados, lo que la hace parcialmente no fiel. Sin emb"
       }
     },
     {
       "id": "q39",
       "question": "¿Qué usos policiales del reconocimiento de emociones mencionan las directrices?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "Las directrices mencionan que el reconocimiento de emociones se utiliza en el contexto de la garantía del cumplimiento del Derecho y la seguridad pública, como en los detectores de mentiras o para detectar emociones en grandes acontecimientos [adc35a2bfb-0531]. Además, se indica que la policía utiliza un sistema de reconocimiento biométrico para analizar las emociones de los aficionados en un estadio de fútbol, detectando comportamientos agresivos [adc35a2bfb-0908].",
       "returned": [
         "adc35a2bfb-0531",
@@ -1170,6 +1382,7 @@
         "adc35a2bfb-0520"
       ],
       "seconds": 4.0,
+      "required_sources_retrieved": true,
       "cited": [
         "adc35a2bfb-0531",
         "adc35a2bfb-0908"
@@ -1184,13 +1397,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta menciona correctamente los usos policiales de reconocimiento de emociones en detectores de mentiras y grandes acontecimientos (adc35a2bfb-0531), y el uso en estadios para detectar comportamientos agresivos (adc35a2bfb-0908), sin añadir información no presente en la evidencia."
+        "caveats": "sí",
+        "reason": "La respuesta incluye los usos mencionados en la evidencia y cita correctamente los fragmentos referidos, sin añadir información no presente ni contradecir matices jurídicos."
       }
     },
     {
       "id": "q40",
       "question": "¿Cuáles son los elementos de la definición de sistema de IA según las directrices de la Comisión?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "Según las directrices de la Comisión, la definición de sistema de IA consta de siete elementos principales: 1) un sistema basado en una máquina; 2) que está diseñado para funcionar con distintos niveles de autonomía; 3) que puede mostrar capacidad de adaptación tras el despliegue; 4) y que, para objetivos explícitos o implícitos; 5) infiere, de la información de entrada que recibe, la manera de generar resultados de salida; 6) como predicciones, contenidos, recomendaciones o decisiones; 7) que pueden influir en entornos físicos o virtuales [ad9634a440-0007].",
       "returned": [
         "ad9634a440-0049",
@@ -1200,6 +1416,7 @@
         "ad9634a440-0003"
       ],
       "seconds": 5.2,
+      "required_sources_retrieved": true,
       "cited": [
         "ad9634a440-0007"
       ],
@@ -1213,13 +1430,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta incluye exactamente los siete elementos mencionados en la evidencia, sin añadir ni omitir información clave."
+        "caveats": "sí",
+        "reason": "La respuesta incluye los siete elementos definidos en la evidencia, respetando la mención de que la adaptación es facultativa («puede mostrar») sin presentarla como obligatoria."
       }
     },
     {
       "id": "q41",
       "question": "¿Una regresión logística usada para optimizar un proceso es un sistema de IA según las directrices?",
       "answerable": true,
+      "question_type": "caso_practico",
+      "difficulty": "media",
       "answer": "No, una regresión logística usada para optimizar un proceso no se considera un sistema de IA según las directrices. Esto se debe a que los sistemas basados en normas definidas únicamente por personas físicas para ejecutar automáticamente operaciones no se incluyen en la definición de sistema de IA [ad9634a440-0032]. Además, los sistemas utilizados para mejorar la optimización matemática, como la regresión logística, quedan fuera del ámbito de aplicación de la definición de sistema de IA porque no van más allá del «tratamiento básico de datos» [ad9634a440-0032].",
       "returned": [
         "ad9634a440-0032",
@@ -1229,6 +1449,7 @@
         "ad9634a440-0033"
       ],
       "seconds": 4.6,
+      "required_sources_retrieved": true,
       "cited": [
         "ad9634a440-0032"
       ],
@@ -1242,13 +1463,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja directamente la información proporcionada en los fragmentos citados sin añadir información externa o contradicciones."
+        "caveats": "sí",
+        "reason": "La respuesta confirma la exclusión de la regresión logística para optimización, citando correctamente los fragmentos y respetando la mención de que solo se aplica cuando se usa para mejorar la optimización, sin contradecir los matices."
       }
     },
     {
       "id": "q42",
       "question": "¿Está prohibido investigar cómo responden las personas a estímulos subliminales generados por IA?",
       "answerable": true,
+      "question_type": "inferencial",
+      "difficulty": "media",
       "answer": "No está prohibido investigar cómo responden las personas a estímulos subliminales generados por IA. Según [adc35a2bfb-0098], la investigación sobre respuestas cognitivas y conductuales a estímulos subliminales basados en la IA está permitida porque está excluida del ámbito de aplicación del Reglamento de Inteligencia Artificial. Esto se debe a que dicha investigación se lleva a cabo específicamente con la investigación y el desarrollo científicos como única finalidad.",
       "returned": [
         "adc35a2bfb-0098",
@@ -1257,7 +1481,8 @@
         "adc35a2bfb-0151",
         "f3313bf016-0013"
       ],
-      "seconds": 4.1,
+      "seconds": 4.0,
+      "required_sources_retrieved": true,
       "cited": [
         "adc35a2bfb-0098"
       ],
@@ -1271,13 +1496,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja correctamente que la investigación está permitida por la exclusión del ámbito de aplicación del Reglamento para fines científicos, según los fragmentos citados."
+        "caveats": "sí",
+        "reason": "La respuesta confirma la exclusión del ámbito del reglamento para la investigación, como en la evidencia, y no menciona la excepción sobre el mercado/servicio, que no es relevante para la pregunta sobre la investigación en sí."
       }
     },
     {
       "id": "q43",
       "question": "Según el borrador de directrices de alto riesgo, ¿un chatbot que informa a futuros estudiantes sobre la admisión es de alto riesgo?",
       "answerable": true,
+      "question_type": "caso_practico",
+      "difficulty": "media",
       "answer": "Según el borrador de directrices de alto riesgo, un chatbot que informa a futuros estudiantes sobre la admisión no es de alto riesgo. Esto se debe a que el chatbot no toma decisiones sobre la admisión ni proporciona recomendaciones personalizadas que puedan influir en el proceso de admisión, sino que solo ofrece información general [1734eea3be-0193].",
       "returned": [
         "1734eea3be-0193",
@@ -1287,6 +1515,7 @@
         "1734eea3be-0189"
       ],
       "seconds": 3.5,
+      "required_sources_retrieved": true,
       "cited": [
         "1734eea3be-0193"
       ],
@@ -1300,13 +1529,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja exactamente el criterio de la evidencia de referencia, afirmando que el chatbot no toma decisiones de admisión ni proporciona recomendaciones personalizadas, solo información general, y cita correctamente el fragmento referenciado."
+        "caveats": "sí",
+        "reason": "La respuesta refleja correctamente el criterio del borrador, cita la evidencia relevante y no contradice la naturaleza consultiva del documento."
       }
     },
     {
       "id": "q44",
       "question": "¿Qué usos de la IA en la contratación de personal cita el borrador de directrices de alto riesgo?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "El borrador de directrices de alto riesgo cita varios usos de la IA en la contratación de personal, incluyendo el screening de CVs, la búsqueda de candidatos, el ranking de aplicantes, el análisis de datos de contratación para predecir el éxito de candidatos y la generación de descripciones de puestos de trabajo [1734eea3be-0229]. También menciona sistemas de análisis de datos para realizar revisiones de antecedentes laborales durante la contratación [1734eea3be-0246]. Además, se incluyen sistemas destinados a la selección de personas para colocar anuncios de empleo, analizar y filtrar aplicaciones y evaluar candidatos [1734eea3be-0227].",
       "returned": [
         "1734eea3be-0217",
@@ -1316,6 +1548,7 @@
         "1734eea3be-0216"
       ],
       "seconds": 4.9,
+      "required_sources_retrieved": true,
       "cited": [
         "1734eea3be-0229",
         "1734eea3be-0246",
@@ -1331,13 +1564,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta incluye todos los usos mencionados en la evidencia: screening de CVs, búsqueda de candidatos, ranking de aplicantes, análisis de datos para predecir éxito, generación de descripciones de puestos y revisiones de antecedentes laborales, alineándose con los fragmentos citados."
+        "caveats": "sí",
+        "reason": "La respuesta incluye todos los usos mencionados en la evidencia, sin añadir información no presente, y no contradice el carácter de borrador no vinculante del documento."
       }
     },
     {
       "id": "q45",
       "question": "¿Qué papel tiene la finalidad prevista en la clasificación de alto riesgo según el borrador de directrices?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "La finalidad prevista de un sistema de inteligencia artificial juega un papel importante en su clasificación como alto riesgo, ya que determina el uso para el cual está diseñado [3ac9d4a8f1-0007]. Además, si la finalidad no incluye uno de los casos de uso listados en el Anexo III, el sistema no será clasificado como alto riesgo [1734eea3be-0018]. También se menciona que la finalidad debe describirse claramente en los materiales del proveedor para determinar si el sistema está intencionado para usos que puedan llevar a su clasificación como alto riesgo [3ac9d4a8f1-0008].",
       "returned": [
         "3ac9d4a8f1-0007",
@@ -1347,6 +1583,7 @@
         "1734eea3be-0187"
       ],
       "seconds": 4.3,
+      "required_sources_retrieved": true,
       "cited": [
         "3ac9d4a8f1-0007",
         "1734eea3be-0018",
@@ -1362,13 +1599,16 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja correctamente los puntos clave de la evidencia: el papel del propósito intencionado en la clasificación, la relación con el Anexo III y la necesidad de descripción clara en materiales del proveedor, citando los fragmentos correspondientes."
+        "caveats": "sí",
+        "reason": "La respuesta refleja correctamente los puntos clave del borrador sin añadir información no mencionada y respetando que es un borrador no vinculante."
       }
     },
     {
       "id": "q46",
       "question": "¿Qué regula el artículo 6, apartado 1, según el borrador de directrices sobre el Anexo I?",
       "answerable": true,
+      "question_type": "factual",
+      "difficulty": "media",
       "answer": "El artículo 6, apartado 1, regula la clasificación de sistemas de IA de alto riesgo según el Anexo I del Reglamento (UE) 2024/1689 (AI Act), específicamente los sistemas que son componentes de seguridad de un producto o que son productos regulados por los actos legislativos de armonización de la Unión enumerados en el Anexo I [beb6610d09-0004]. Este artículo establece las reglas para la clasificación de estos sistemas [beb6610d09-0004].",
       "returned": [
         "beb6610d09-0004",
@@ -1377,7 +1617,8 @@
         "1734eea3be-0000",
         "beb6610d09-0048"
       ],
-      "seconds": 4.0,
+      "seconds": 3.9,
+      "required_sources_retrieved": true,
       "cited": [
         "beb6610d09-0004"
       ],
@@ -1391,14 +1632,17 @@
       "judge": {
         "correct": "sí",
         "faithful": "sí",
-        "reason": "La respuesta refleja exactamente el contenido del texto oficial citado, incluyendo la clasificación de sistemas de IA como componentes de seguridad de productos o productos regulados por la armonización unionista, sin añadir ni omitir información esencial."
+        "caveats": "sí",
+        "reason": "La respuesta refleja correctamente la clasificación de sistemas de IA como componentes de seguridad o productos regulados por el Anexo I, citando la evidencia proporcionada y no contradice la naturaleza de borrador del texto."
       }
     },
     {
       "id": "q47",
       "question": "¿Cuál es la multa máxima por infringir el Reglamento General de Protección de Datos?",
       "answerable": false,
-      "answer": "La multa máxima por infringir el Reglamento General de Protección de Datos no se especifica directamente en los documentos proporcionados. Sin embargo, se menciona que el incumplimiento de las prohibiciones establecidas en el artículo 5 del Reglamento de Inteligencia Artificial está sujeto a la multa más elevada, que puede llegar a 35 000 000 EUR o el 7 % del volumen de negocios mundial total, si es aplicable [adc35a2bfb-0137]. Además, se indica que las instituciones, órganos y organismos de la UE pueden estar sujetos a multas administrativas de hasta 1 500 000 EUR en caso de infracción de prohibiciones [adc35a2bfb-0137].",
+      "question_type": "no_respondible",
+      "difficulty": "difícil",
+      "answer": "No lo sé: los documentos recuperados no contienen esa información.",
       "returned": [
         "c42b714243-0011",
         "e05e142ece-0002",
@@ -1407,21 +1651,22 @@
         "c42b714243-0010"
       ],
       "seconds": 5.4,
-      "cited": [
-        "adc35a2bfb-0137"
-      ],
+      "required_sources_retrieved": null,
+      "cited": [],
       "invalid_citations": [],
       "citations_valid": true,
-      "has_citation": true,
+      "has_citation": false,
       "cites_relevant": null,
       "retrieved_relevant": null,
       "keyword": null,
-      "refusal": false
+      "refusal": true
     },
     {
       "id": "q48",
       "question": "¿Quién dirige actualmente la Oficina Europea de IA?",
       "answerable": false,
+      "question_type": "no_respondible",
+      "difficulty": "media",
       "answer": "No lo sé: los documentos recuperados no contienen esa información.",
       "returned": [
         "a1d4a1c40c-0016",
@@ -1431,6 +1676,7 @@
         "d0f6429501-0002"
       ],
       "seconds": 0.9,
+      "required_sources_retrieved": null,
       "cited": [],
       "invalid_citations": [],
       "citations_valid": true,
@@ -1444,6 +1690,8 @@
       "id": "q49",
       "question": "¿Qué exige la ley de inteligencia artificial de Colorado a los desarrolladores?",
       "answerable": false,
+      "question_type": "no_respondible",
+      "difficulty": "media",
       "answer": "No lo sé: los documentos recuperados no contienen esa información.",
       "returned": [
         "adc35a2bfb-0880",
@@ -1453,6 +1701,7 @@
         "adc35a2bfb-0060"
       ],
       "seconds": 1.1,
+      "required_sources_retrieved": null,
       "cited": [],
       "invalid_citations": [],
       "citations_valid": true,
@@ -1466,6 +1715,8 @@
       "id": "q50",
       "question": "¿Cuántos parámetros tiene el modelo GPT-4?",
       "answerable": false,
+      "question_type": "no_respondible",
+      "difficulty": "media",
       "answer": "No lo sé: los documentos recuperados no contienen esa información.",
       "returned": [
         "0b5ec07c01-0007",
@@ -1475,6 +1726,7 @@
         "94d4dfdbf7-0007"
       ],
       "seconds": 1.0,
+      "required_sources_retrieved": null,
       "cited": [],
       "invalid_citations": [],
       "citations_valid": true,
@@ -1488,6 +1740,8 @@
       "id": "q51",
       "question": "¿Qué presupuesto tiene la Oficina de IA para 2026?",
       "answerable": false,
+      "question_type": "no_respondible",
+      "difficulty": "media",
       "answer": "No lo sé: los documentos recuperados no contienen esa información.",
       "returned": [
         "15ddfec261-0012",
@@ -1497,6 +1751,649 @@
         "b537ab8c01-0012"
       ],
       "seconds": 1.0,
+      "required_sources_retrieved": null,
+      "cited": [],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": false,
+      "cites_relevant": null,
+      "retrieved_relevant": null,
+      "keyword": null,
+      "refusal": true
+    },
+    {
+      "id": "q52",
+      "question": "Un proveedor de un sistema de selección de personal del Anexo III, ¿qué evaluación de la conformidad debe seguir y dónde tiene que registrar el sistema?",
+      "answerable": true,
+      "question_type": "inferencial",
+      "difficulty": "media",
+      "answer": "Un proveedor de un sistema de selección de personal del Anexo III debe seguir el procedimiento de evaluación de la conformidad fundamentado en un control interno, según [09911db1f0-0005]. Si el sistema está regulado por actos legislativos de armonización, se aplicará el procedimiento exigido por dichos actos, según [09911db1f0-0007]. El sistema debe registrarse en la base de datos de la UE según [de672743c7-0003].",
+      "returned": [
+        "09911db1f0-0005",
+        "09911db1f0-0001",
+        "de672743c7-0003",
+        "09911db1f0-0007",
+        "09911db1f0-0002"
+      ],
+      "seconds": 3.7,
+      "required_sources_retrieved": true,
+      "cited": [
+        "09911db1f0-0005",
+        "09911db1f0-0007",
+        "de672743c7-0003"
+      ],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": true,
+      "cites_relevant": true,
+      "retrieved_relevant": true,
+      "keyword": true,
+      "refusal": false,
+      "judge": {
+        "correct": "sí",
+        "faithful": "sí",
+        "caveats": "sí",
+        "reason": "La respuesta menciona correctamente los procedimientos de evaluación de conformidad (control interno, artículo 43) y el registro en la base de datos (artículo 49), citando los fragmentos relevantes sin añadir información no presente en la evidencia. No contradice matices jurídicos ni introduce excep"
+      }
+    },
+    {
+      "id": "q53",
+      "question": "Si un sistema de alto riesgo causa la muerte de una persona, ¿a quién hay que notificarlo y en qué plazo?",
+      "answerable": true,
+      "question_type": "inferencial",
+      "difficulty": "media",
+      "answer": "Si un sistema de alto riesgo causa la muerte de una persona, se debe notificar inmediatamente al proveedor o responsable del despliegue, y en un plazo no superior a diez días a contar de la fecha en que se tenga conocimiento del incidente grave [6feb46dfaa-0007]. Además, según [fb563576e0-0010], se informará también al importador o distribuidor y a la autoridad de vigilancia del mercado pertinente.",
+      "returned": [
+        "6feb46dfaa-0007",
+        "fb563576e0-0010",
+        "fb563576e0-0027",
+        "a3c23211b9-0021",
+        "fb563576e0-0021"
+      ],
+      "seconds": 3.8,
+      "required_sources_retrieved": true,
+      "cited": [
+        "6feb46dfaa-0007",
+        "fb563576e0-0010"
+      ],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": true,
+      "cites_relevant": true,
+      "retrieved_relevant": true,
+      "keyword": true,
+      "refusal": false,
+      "judge": {
+        "correct": "sí",
+        "faithful": "sí",
+        "caveats": "sí",
+        "reason": "La respuesta incluye las autoridades de vigilancia y menciona el plazo de diez días, conforme a los fragmentos citados. No contradice la excepción sobre el plazo general de quince días, ya que se refiere específicamente a la notificación en caso de fallecimiento."
+      }
+    },
+    {
+      "id": "q54",
+      "question": "¿Qué obligación de transparencia tiene el proveedor de un generador de imágenes y cuál tiene quien publica un deepfake hecho con él?",
+      "answerable": true,
+      "question_type": "inferencial",
+      "difficulty": "media",
+      "answer": "El proveedor de un generador de imágenes debe asegurarse de que los resultados de salida estén marcados en un formato legible por máquina y que sea posible detectar que han sido generados o manipulados de manera artificial [a042e32725-0004]. Quien publica un deepfake hecho con él debe hacer público que este contenido ha sido generado o manipulado de manera artificial [a042e32725-0009].",
+      "returned": [
+        "7561473017-0009",
+        "a042e32725-0009",
+        "a042e32725-0011",
+        "a042e32725-0004",
+        "a042e32725-0016"
+      ],
+      "seconds": 3.5,
+      "required_sources_retrieved": true,
+      "cited": [
+        "a042e32725-0004",
+        "a042e32725-0009"
+      ],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": true,
+      "cites_relevant": true,
+      "retrieved_relevant": true,
+      "keyword": true,
+      "refusal": false,
+      "judge": {
+        "correct": "sí",
+        "faithful": "sí",
+        "caveats": "sí",
+        "reason": "La respuesta refleja exactamente los requisitos del artículo 50, citando los fragmentos correspondientes y no introduce excepciones ni contradicciones."
+      }
+    },
+    {
+      "id": "q55",
+      "question": "Fuera del trabajo y de los centros educativos, ¿qué régimen tiene un sistema de reconocimiento de emociones?",
+      "answerable": true,
+      "question_type": "inferencial",
+      "difficulty": "difícil",
+      "answer": "Fuera del trabajo y de los centros educativos, los sistemas de reconocimiento de emociones no entran en el ámbito de aplicación de la prohibición establecida en el artículo 5, apartado 1, letra f), del Reglamento de Inteligencia Artificial [adc35a2bfb-0606]. Sin embargo, estos sistemas se consideran de alto riesgo y pueden prohibirse en determinados casos en virtud del artículo 5, apartado 1, letras a) y b), del Reglamento de Inteligencia Artificial [adc35a2bfb-0606]. Además, la legislación de la Unión en materia de protección de datos, protección de los consumidores, etc., sigue siendo aplicable a dichos sistemas [adc35a2bfb-0606].",
+      "returned": [
+        "adc35a2bfb-0606",
+        "adc35a2bfb-0520",
+        "adc35a2bfb-0564",
+        "adc35a2bfb-0592",
+        "adc35a2bfb-0610"
+      ],
+      "seconds": 5.0,
+      "required_sources_retrieved": false,
+      "cited": [
+        "adc35a2bfb-0606"
+      ],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": true,
+      "cites_relevant": false,
+      "retrieved_relevant": false,
+      "keyword": true,
+      "refusal": false,
+      "judge": {
+        "correct": "sí",
+        "faithful": "sí",
+        "caveats": "no",
+        "reason": "La respuesta no menciona la obligación de transparencia del artículo 50, apartado 3, que es un mático jurídico relevante, por lo que no respeta los matices especificados."
+      }
+    },
+    {
+      "id": "q56",
+      "question": "Un modelo de IA de uso general publicado en código abierto que tiene riesgo sistémico, ¿se libra de tener que elaborar la documentación técnica?",
+      "answerable": true,
+      "question_type": "inferencial",
+      "difficulty": "difícil",
+      "answer": "Un modelo de IA de uso general publicado en código abierto que tiene riesgo sistémico no se libra de tener que elaborar la documentación técnica. Según [ef8db8c68f-0012], la obligación establecida en el artículo 54 no se aplica a los modelos de IA de uso general publicados en código abierto, salvo si presentan riesgos sistémicos. [a2419f72ed-0004] también indica que los proveedores de modelos de IA de uso general divulgados con arreglo a una licencia de código abierto están sujetos a excepciones en cuanto a los requisitos de transparencia, a menos que presenten un riesgo sistémico. Sin embargo, esto no excluye la necesidad de elaborar la documentación técnica, ya que [a2419f72ed-0001] establece que los proveedores deben elaborar y mantener actualizada la documentación técnica.",
+      "returned": [
+        "a2419f72ed-0001",
+        "a2419f72ed-0004",
+        "0a423d7f00-0005",
+        "ef8db8c68f-0012",
+        "0b5ec07c01-0003"
+      ],
+      "seconds": 5.8,
+      "required_sources_retrieved": false,
+      "cited": [
+        "ef8db8c68f-0012",
+        "a2419f72ed-0004",
+        "a2419f72ed-0001"
+      ],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": true,
+      "cites_relevant": false,
+      "retrieved_relevant": false,
+      "keyword": true,
+      "refusal": false,
+      "judge": {
+        "correct": "sí",
+        "faithful": "sí",
+        "caveats": "sí",
+        "reason": "La respuesta confirma que los modelos con riesgo sistémico no se eximen de la documentación técnica, alineándose con la evidencia y no contradiciendo los matices sobre derechos de autor y resumen de datos de entrenamiento, que no son relevantes para la pregunta."
+      }
+    },
+    {
+      "id": "q57",
+      "question": "¿La prohibición de la puntuación ciudadana afecta solo a las administraciones públicas?",
+      "answerable": true,
+      "question_type": "inferencial",
+      "difficulty": "media",
+      "answer": "No, la prohibición de la puntuación ciudadana no afecta solo a las administraciones públicas. Según [adc35a2bfb-0403], el artículo 5, apartado 1, letra c), del Reglamento de Inteligencia Artificial prohíbe dichas prácticas independientemente de que el sistema de IA o la puntuación sean proporcionados o utilizados por personas públicas o privadas. [adc35a2bfb-0342] también indica que la prohibición tiene un amplio ámbito de aplicación tanto en contextos públicos como privados.",
+      "returned": [
+        "adc35a2bfb-0342",
+        "adc35a2bfb-0343",
+        "adc35a2bfb-0403",
+        "adc35a2bfb-0374",
+        "adc35a2bfb-0345"
+      ],
+      "seconds": 4.1,
+      "required_sources_retrieved": true,
+      "cited": [
+        "adc35a2bfb-0403",
+        "adc35a2bfb-0342"
+      ],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": true,
+      "cites_relevant": true,
+      "retrieved_relevant": true,
+      "keyword": true,
+      "refusal": false,
+      "judge": {
+        "correct": "sí",
+        "faithful": "sí",
+        "caveats": "sí",
+        "reason": "La respuesta confirma que la prohibición aplica a ambos sectores (públicos y privados) según los fragmentos citados, sin añadir información no presente en la evidencia. No contradice los matices jurídicos, ya que la pregunta no requiere mencionar las condiciones de 'trato perjudicial'."
+      }
+    },
+    {
+      "id": "q58",
+      "question": "Para un sistema de IA de alto riesgo que es componente de seguridad de un producto del Anexo I, sección A, ¿qué procedimiento de evaluación de la conformidad se sigue?",
+      "answerable": true,
+      "question_type": "inferencial",
+      "difficulty": "difícil",
+      "answer": "Para un sistema de IA de alto riesgo que es componente de seguridad de un producto del Anexo I, sección A, se sigue el procedimiento de evaluación de la conformidad establecido en los actos legislativos de armonización de la Unión, que incluye una evaluación de terceros [beb6610d09-0031]. Además, según el texto, este sistema debe ser evaluado como parte de la evaluación de seguridad general del producto regulado [beb6610d09-0016].",
+      "returned": [
+        "09911db1f0-0007",
+        "beb6610d09-0032",
+        "ac22fb8005-0004",
+        "beb6610d09-0031",
+        "beb6610d09-0016"
+      ],
+      "seconds": 4.0,
+      "required_sources_retrieved": true,
+      "cited": [
+        "beb6610d09-0031",
+        "beb6610d09-0016"
+      ],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": true,
+      "cites_relevant": false,
+      "retrieved_relevant": true,
+      "keyword": true,
+      "refusal": false,
+      "judge": {
+        "correct": "sí",
+        "faithful": "sí",
+        "caveats": "sí",
+        "reason": "La respuesta refleja correctamente el procedimiento de evaluación de terceros y la integración en la evaluación de seguridad del producto regulado, sin añadir información no presente en los fragmentos citados ni contradecir los matices sobre el Anexo I, sección A."
+      }
+    },
+    {
+      "id": "q59",
+      "question": "Una empresa quiere usar cámaras con IA que detectan el nivel de estrés de sus empleados para mejorar su bienestar. ¿Puede hacerlo?",
+      "answerable": true,
+      "question_type": "caso_practico",
+      "difficulty": "difícil",
+      "answer": "No, la empresa no puede hacerlo. Según [adc35a2bfb-0603], el reconocimiento de emociones para evaluar el bienestar de los empleados, los niveles de motivación y la satisfacción laboral no se considera un «uso por motivos médicos» y está prohibido, salvo en casos específicos donde el elevado nivel de estrés suponga un peligro inmediato.",
+      "returned": [
+        "adc35a2bfb-0603",
+        "adc35a2bfb-0595",
+        "adc35a2bfb-0579",
+        "adc35a2bfb-0578",
+        "adc35a2bfb-0531"
+      ],
+      "seconds": 3.8,
+      "required_sources_retrieved": true,
+      "cited": [
+        "adc35a2bfb-0603"
+      ],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": true,
+      "cites_relevant": false,
+      "retrieved_relevant": true,
+      "keyword": true,
+      "refusal": false,
+      "judge": {
+        "correct": "sí",
+        "faithful": "sí",
+        "caveats": "sí",
+        "reason": "La respuesta refleja correctamente la prohibición general del seguimiento de estrés laboral, menciona la excepción específica de peligro inmediato y cita la evidencia requerida sin añadir información no presente en los fragmentos."
+      }
+    },
+    {
+      "id": "q60",
+      "question": "Un banco usa un sistema de IA para calcular la solvencia de los particulares que piden un préstamo. ¿Es de alto riesgo y qué tiene que hacer el banco antes de desplegarlo?",
+      "answerable": true,
+      "question_type": "caso_practico",
+      "difficulty": "difícil",
+      "answer": "Un banco que utiliza un sistema de IA para calcular la solvencia de particulares que piden un préstamo debe considerar que este sistema es de alto riesgo [a8c9ce769d-0013]. Antes de desplegarlo, el banco debe asegurarse de que el sistema cumpla con los requisitos establecidos en la regulación europea, incluyendo la evaluación de su impacto en la discriminación y la protección de los derechos fundamentales [a8c9ce769d-0013].",
+      "returned": [
+        "adc35a2bfb-0405",
+        "1734eea3be-0320",
+        "1734eea3be-0319",
+        "1734eea3be-0322",
+        "a8c9ce769d-0013"
+      ],
+      "seconds": 4.3,
+      "required_sources_retrieved": false,
+      "cited": [
+        "a8c9ce769d-0013"
+      ],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": true,
+      "cites_relevant": false,
+      "retrieved_relevant": false,
+      "keyword": true,
+      "refusal": false,
+      "judge": {
+        "correct": "parcial",
+        "faithful": "sí",
+        "caveats": "sí",
+        "reason": "La respuesta menciona la evaluación de impacto en derechos fundamentales y el alto riesgo, pero no incluye la obligación de notificar a la autoridad de vigilancia, que es parte del requisito en la evidencia. Sin embargo, no contradice los matices sobre la exclusión de sistemas para detectar fraudes,"
+      }
+    },
+    {
+      "id": "q61",
+      "question": "Una universidad quiere usar IA para corregir exámenes y decidir quién aprueba. ¿Qué clasificación tiene ese sistema?",
+      "answerable": true,
+      "question_type": "caso_practico",
+      "difficulty": "media",
+      "answer": "Una universidad que use IA para corregir exámenes y decidir quién aprueba utilizaría un sistema que no cae bajo la clasificación de alto riesgo, ya que el sistema de IA no altera el contenido del examen ni la intención educativa, y el profesor sigue siendo responsable de las decisiones finales [1734eea3be-0201]. Sin embargo, si el sistema está destinado a evaluar resultados de aprendizaje, como otorgar calificaciones o certificados, entonces caería bajo la clasificación de alto riesgo según el anexo III [1734eea3be-0196].",
+      "returned": [
+        "1734eea3be-0194",
+        "1734eea3be-0202",
+        "1734eea3be-0196",
+        "1734eea3be-0201",
+        "d388ac242a-0008"
+      ],
+      "seconds": 4.5,
+      "required_sources_retrieved": false,
+      "cited": [
+        "1734eea3be-0201",
+        "1734eea3be-0196"
+      ],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": true,
+      "cites_relevant": false,
+      "retrieved_relevant": false,
+      "keyword": true,
+      "refusal": false,
+      "judge": {
+        "correct": "parcial",
+        "faithful": "sí",
+        "caveats": "sí",
+        "reason": "La respuesta reconoce la clasificación de alto riesgo cuando se evalúa aprendizaje (anexo III) pero contradice la referencia al afirmar que no es alto riesgo si el IA no altera el examen. Sin embargo, menciona la excepción de Article 6(3) correctamente, aunque la pregunta no descarta esa condición.",
+        "retried": true
+      }
+    },
+    {
+      "id": "q62",
+      "question": "Una tienda quiere usar sus cámaras con IA para clasificar a los clientes según su origen étnico. ¿Está permitido?",
+      "answerable": true,
+      "question_type": "caso_practico",
+      "difficulty": "media",
+      "answer": "No está permitido. Según el artículo 5, apartado 1, letra g), del Reglamento de Inteligencia Artificial, está prohibido el uso de sistemas de categorización biométrica que clasifiquen individualmente a las personas físicas sobre la base de sus datos biométricos para deducir o inferir su raza, opiniones políticas, afiliación sindical, convicciones religiosas o filosóficas, vida sexual u orientación sexual [e3c6c1fec3-0004].",
+      "returned": [
+        "adc35a2bfb-0583",
+        "adc35a2bfb-0619",
+        "1734eea3be-0121",
+        "1734eea3be-0126",
+        "e3c6c1fec3-0004"
+      ],
+      "seconds": 4.1,
+      "required_sources_retrieved": true,
+      "cited": [
+        "e3c6c1fec3-0004"
+      ],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": true,
+      "cites_relevant": true,
+      "retrieved_relevant": true,
+      "keyword": true,
+      "refusal": false,
+      "judge": {
+        "correct": "sí",
+        "faithful": "sí",
+        "caveats": "sí",
+        "reason": "La respuesta identifica correctamente la prohibición en el artículo 5, letra g), y no contradice la excepción sobre datos adquiridos lícitamente, ya que la pregunta se refiere a un uso proibido (clasificación), no a etiquetado de datos legales.",
+        "retried": true
+      }
+    },
+    {
+      "id": "q63",
+      "question": "Un proyecto comunitario publica en código abierto un sistema de IA que puntúa a los vecinos según su comportamiento social. ¿Le libra la licencia abierta de la prohibición?",
+      "answerable": true,
+      "question_type": "caso_practico",
+      "difficulty": "difícil",
+      "answer": "No, la licencia abierta no le libra del ámbito de aplicación de la prohibición. Según [60cc19c711-0024], el Reglamento no se aplica a sistemas de IA con licencias libres y de código abierto, salvo que se introduzcan en el mercado o se pongan en servicio como sistemas de alto riesgo o como sistemas que entren en el ámbito de aplicación del artículo 5. El proyecto comunitario, al publicar en código abierto un sistema que realiza «puntuación ciudadana» según [adc35a2bfb-0352] y [e3c6c1fec3-0002], podría estar dentro del ámbito prohibido del artículo 5, por lo que no estaría exento de la prohibición.",
+      "returned": [
+        "adc35a2bfb-0352",
+        "144ef2da19-0003",
+        "e3c6c1fec3-0002",
+        "60cc19c711-0024",
+        "adc35a2bfb-0342"
+      ],
+      "seconds": 5.2,
+      "required_sources_retrieved": true,
+      "cited": [
+        "60cc19c711-0024",
+        "adc35a2bfb-0352",
+        "e3c6c1fec3-0002"
+      ],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": true,
+      "cites_relevant": true,
+      "retrieved_relevant": true,
+      "keyword": true,
+      "refusal": false,
+      "judge": {
+        "correct": "sí",
+        "faithful": "sí",
+        "caveats": "sí",
+        "reason": "La respuesta confirma que el sistema no está exento de la prohibición al estar bajo el ámbito de aplicación del artículo 5, citando las evidencias relevantes y respetando la condición de que la puntuación ciudadana deba provocar un trato perjudicial injustificado."
+      }
+    },
+    {
+      "id": "q64",
+      "question": "¿Cuántas horas de formación en IA exige el reglamento a cada empleado?",
+      "answerable": false,
+      "question_type": "no_respondible",
+      "difficulty": "difícil",
+      "answer": "No lo sé: los documentos recuperados no contienen esa información.",
+      "returned": [
+        "cf54c17c8f-0000",
+        "b537ab8c01-0011",
+        "adc35a2bfb-0844",
+        "adc35a2bfb-0060",
+        "896592a007-0010"
+      ],
+      "seconds": 1.1,
+      "required_sources_retrieved": null,
+      "cited": [],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": false,
+      "cites_relevant": null,
+      "retrieved_relevant": null,
+      "keyword": null,
+      "refusal": true
+    },
+    {
+      "id": "q65",
+      "question": "¿Qué norma ISO es obligatoria para certificar un sistema de IA de alto riesgo?",
+      "answerable": false,
+      "question_type": "no_respondible",
+      "difficulty": "difícil",
+      "answer": "No lo sé: los documentos recuperados no contienen esa información.",
+      "returned": [
+        "b31c515458-0004",
+        "3f538c5811-0002",
+        "ac22fb8005-0003",
+        "4d65dca5fb-0002",
+        "a8c9ce769d-0001"
+      ],
+      "seconds": 1.8,
+      "required_sources_retrieved": null,
+      "cited": [],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": false,
+      "cites_relevant": null,
+      "retrieved_relevant": null,
+      "keyword": null,
+      "refusal": true
+    },
+    {
+      "id": "q66",
+      "question": "¿Cuánto cuesta registrar un sistema de IA en la base de datos de la UE?",
+      "answerable": false,
+      "question_type": "no_respondible",
+      "difficulty": "difícil",
+      "answer": "No lo sé: los documentos recuperados no contienen esa información. [7561473017-0002], [7561473017-0001], [1bb471d82b-0002], [de672743c7-0003] y [de672743c7-0005] mencionan la necesidad de registrar sistemas de IA en la base de datos de la UE, pero ninguno de ellos indica el costo asociado a dicho registro.",
+      "returned": [
+        "7561473017-0002",
+        "7561473017-0001",
+        "1bb471d82b-0002",
+        "de672743c7-0003",
+        "de672743c7-0005"
+      ],
+      "seconds": 3.0,
+      "required_sources_retrieved": null,
+      "cited": [
+        "7561473017-0002",
+        "7561473017-0001",
+        "1bb471d82b-0002",
+        "de672743c7-0003",
+        "de672743c7-0005"
+      ],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": true,
+      "cites_relevant": null,
+      "retrieved_relevant": null,
+      "keyword": null,
+      "refusal": true
+    },
+    {
+      "id": "q67",
+      "question": "¿Cuántas multas se han impuesto ya en aplicación del Reglamento de IA?",
+      "answerable": false,
+      "question_type": "no_respondible",
+      "difficulty": "difícil",
+      "answer": "No lo sé: los documentos recuperados no contienen esa información.",
+      "returned": [
+        "c42b714243-0011",
+        "adc35a2bfb-0137",
+        "e05e142ece-0008",
+        "b206a87a30-0002",
+        "4d65dca5fb-0009"
+      ],
+      "seconds": 1.7,
+      "required_sources_retrieved": null,
+      "cited": [],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": false,
+      "cites_relevant": null,
+      "retrieved_relevant": null,
+      "keyword": null,
+      "refusal": true
+    },
+    {
+      "id": "q68",
+      "question": "¿Cuándo entra en vigor la ley española para el buen uso y la gobernanza de la IA?",
+      "answerable": false,
+      "question_type": "no_respondible",
+      "difficulty": "difícil",
+      "answer": "No lo sé: los documentos recuperados no contienen esa información.",
+      "returned": [
+        "ad9634a440-0001",
+        "4d65dca5fb-0007",
+        "adc35a2bfb-0060",
+        "ea636ab1a4-0007",
+        "adc35a2bfb-0919"
+      ],
+      "seconds": 1.2,
+      "required_sources_retrieved": null,
+      "cited": [],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": false,
+      "cites_relevant": null,
+      "retrieved_relevant": null,
+      "keyword": null,
+      "refusal": true
+    },
+    {
+      "id": "q69",
+      "question": "¿Qué precisión mínima debe tener un detector de ultrasuplantaciones?",
+      "answerable": false,
+      "question_type": "no_respondible",
+      "difficulty": "difícil",
+      "answer": "No lo sé: los documentos recuperados no contienen esa información.",
+      "returned": [
+        "c75a31e761-0018",
+        "7561473017-0009",
+        "7561473017-0010",
+        "cf5d121770-0006",
+        "cf5d121770-0002"
+      ],
+      "seconds": 1.2,
+      "required_sources_retrieved": null,
+      "cited": [],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": false,
+      "cites_relevant": null,
+      "retrieved_relevant": null,
+      "keyword": null,
+      "refusal": true
+    },
+    {
+      "id": "q70",
+      "question": "¿Qué ha dicho el Tribunal de Justicia de la UE en sus sentencias sobre el artículo 5 del Reglamento de IA?",
+      "answerable": false,
+      "question_type": "no_respondible",
+      "difficulty": "difícil",
+      "answer": "El Tribunal de Justicia de la UE ha emitido sentencias que se refieren al artículo 5 del Reglamento de IA, como se menciona en [adc35a2bfb-0089]. Estas sentencias incluyen casos como La Quadrature du Net y otros, así como Comisión/Polonia, donde se analizan aspectos relacionados con el artículo 5. Sin embargo, los fragmentos no detallan específicamente lo que ha dicho el TJUE sobre el artículo 5, sino que mencionan sentencias que se relacionan con el tema. No lo sé: los documentos recuperados no contienen esa información.",
+      "returned": [
+        "adc35a2bfb-0064",
+        "adc35a2bfb-0065",
+        "ad9634a440-0006",
+        "adc35a2bfb-0089",
+        "adc35a2bfb-0204"
+      ],
+      "seconds": 4.7,
+      "required_sources_retrieved": null,
+      "cited": [
+        "adc35a2bfb-0089"
+      ],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": true,
+      "cites_relevant": null,
+      "retrieved_relevant": null,
+      "keyword": null,
+      "refusal": false
+    },
+    {
+      "id": "q71",
+      "question": "¿Qué empresa obtuvo el primer certificado de conformidad para un sistema de IA de alto riesgo?",
+      "answerable": false,
+      "question_type": "no_respondible",
+      "difficulty": "difícil",
+      "answer": "No lo sé: los documentos recuperados no contienen esa información.",
+      "returned": [
+        "ac22fb8005-0003",
+        "fb471d2f60-0007",
+        "beb6610d09-0031",
+        "3f538c5811-0001",
+        "adc35a2bfb-0081"
+      ],
+      "seconds": 1.1,
+      "required_sources_retrieved": null,
+      "cited": [],
+      "invalid_citations": [],
+      "citations_valid": true,
+      "has_citation": false,
+      "cites_relevant": null,
+      "retrieved_relevant": null,
+      "keyword": null,
+      "refusal": true
+    },
+    {
+      "id": "q72",
+      "question": "¿Cuál es la receta tradicional de la paella valenciana?",
+      "answerable": false,
+      "question_type": "no_respondible",
+      "difficulty": "fácil",
+      "answer": "No lo sé: los documentos recuperados no contienen esa información.",
+      "returned": [
+        "e0af40d7f3-0012",
+        "e0af40d7f3-0014",
+        "e0af40d7f3-0011",
+        "1734eea3be-0105",
+        "1734eea3be-0407"
+      ],
+      "seconds": 0.8,
+      "required_sources_retrieved": null,
       "cited": [],
       "invalid_citations": [],
       "citations_valid": true,

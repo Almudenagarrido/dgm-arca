@@ -7,7 +7,15 @@ For every gold question the pipeline retrieves, generates and is scored on:
 * ``cites_relevant`` (answerable questions): at least one cited chunk contains the evidence;
 * ``keyword``: the answer contains the key fact (``answer_keywords``);
 * ``refusal``: the answer is ``NOT_FOUND``. It should be true for unanswerable questions and
-  false for answerable ones.
+  false for answerable ones;
+* ``required_sources_retrieved`` (gold v2): every group of ``required_sources`` has at least one
+  of its documents among the returned chunks. For questions that combine articles, finding one
+  passage is not enough.
+
+The summary keeps the three stages apart, so a failure can be traced to one of them:
+retrieval (``relevant_chunk_retrieved``, ``required_sources_retrieved``), relevance
+(``cites_relevant_chunk``) and answer (``keyword``; the judge in ``rag/judge.py``). It is broken
+down by ``question_type`` and ``difficulty``.
 
 ``--closed-book`` asks the same model the same questions without any retrieved text: the
 baseline that shows what retrieval adds.
@@ -41,7 +49,13 @@ def score(
     answerable = item.get("answerable", True)
     relevant = relevant_chunk_ids(item, chunks) if answerable else set()
     keywords = [k.lower() for k in item.get("answer_keywords", [])]
+    source_of = {c.id: c.source for c in chunks}
+    returned_sources = {source_of.get(cid) for cid in returned_ids}
+    groups = item.get("required_sources") or []
     return {
+        "required_sources_retrieved": all(returned_sources & set(g) for g in groups)
+        if answerable and groups
+        else None,
         "cited": cited,
         "invalid_citations": [*invalid_labels, *(c for c in cited if c not in returned_ids)],
         "citations_valid": not invalid_labels and all(c in returned_ids for c in cited),
@@ -53,24 +67,44 @@ def score(
     }
 
 
-def summarise(rows: list[dict]) -> dict:
+def rates(rows: list[dict]) -> dict:
     answerable = [r for r in rows if r["answerable"]]
     unanswerable = [r for r in rows if not r["answerable"]]
 
     def rate(group, key):
-        return round(sum(bool(r[key]) for r in group) / max(len(group), 1), 3)
+        if not group:
+            return None
+        return round(sum(bool(r[key]) for r in group) / len(group), 3)
 
     return {
         "n_answerable": len(answerable),
         "n_unanswerable": len(unanswerable),
-        "keyword_accuracy": rate(answerable, "keyword"),
+        # retrieval
+        "relevant_chunk_retrieved": rate(answerable, "retrieved_relevant"),
+        "required_sources_retrieved": rate(
+            [r for r in answerable if r.get("required_sources_retrieved") is not None],
+            "required_sources_retrieved",
+        ),
+        # relevance of what the answer relies on
+        "cites_relevant_chunk": rate(answerable, "cites_relevant"),
         "answers_with_citation": rate(answerable, "has_citation"),
         "citations_valid": rate(rows, "citations_valid"),
-        "cites_relevant_chunk": rate(answerable, "cites_relevant"),
-        "relevant_chunk_retrieved": rate(answerable, "retrieved_relevant"),
+        # answer
+        "keyword_accuracy": rate(answerable, "keyword"),
         "false_refusals": rate(answerable, "refusal"),
         "correct_refusals": rate(unanswerable, "refusal"),
     }
+
+
+def summarise(rows: list[dict]) -> dict:
+    summary = rates(rows)
+    for field in ("question_type", "difficulty"):
+        values = sorted({r.get(field) for r in rows if r.get(field)})
+        if values:
+            summary[f"by_{field}"] = {
+                v: rates([r for r in rows if r.get(field) == v]) for v in values
+            }
+    return summary
 
 
 def main() -> None:
@@ -105,6 +139,7 @@ def main() -> None:
                 has_citation=None,
                 cites_relevant=None,
                 retrieved_relevant=None,
+                required_sources_retrieved=None,
             )
             scores["refusal"] = answer.strip().strip('«»"').lower().startswith("no lo sé")
         rows.append(
@@ -112,6 +147,8 @@ def main() -> None:
                 "id": item["id"],
                 "question": item["question"],
                 "answerable": item.get("answerable", True),
+                "question_type": item.get("question_type"),
+                "difficulty": item.get("difficulty"),
                 "answer": answer,
                 "returned": returned,
                 "seconds": round(time.perf_counter() - started, 1),

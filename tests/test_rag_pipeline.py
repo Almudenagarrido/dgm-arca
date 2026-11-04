@@ -123,7 +123,12 @@ def test_judge_verdicts_are_parsed_defensively():
     from rag.judge import parse_verdict
 
     raw = '<think>{"correct": "no"}</think> {"correct": "Si", "faithful": "no", "reason": "ok"}'
-    assert parse_verdict(raw) == {"correct": "sí", "faithful": "no", "reason": "ok"}
+    assert parse_verdict(raw) == {
+        "correct": "sí",
+        "faithful": "no",
+        "caveats": "?",
+        "reason": "ok",
+    }
     assert parse_verdict("sin json")["correct"] == "?"
 
 
@@ -139,3 +144,94 @@ def test_low_reranker_score_answers_not_found_without_generating():
     pipeline.retrieve = lambda q, k, r: [Hit(_chunk("d-0001", "texto"), 0.99)]
     response = pipeline.answer("¿Qué dice el artículo 5?")
     assert response.citations == ["d-0001"] and len(calls) == 1
+
+
+def test_low_sufficiency_answers_not_found_without_generating():
+    from rag.generate import RagPipeline
+
+    pipeline = RagPipeline(rerank=True, translate_query=False)
+    pipeline.min_score, pipeline.min_sufficiency = 0.5, 0.4
+    calls = []
+    pipeline.generate = lambda prompt, thinking=None: calls.append(prompt) or "Respuesta [F1]."
+    pipeline.retrieve = lambda q, k, r: [Hit(_chunk("d-0001", "texto"), 0.99)]
+    pipeline.sufficiency = lambda q, hits: 0.1
+    assert pipeline.answer("¿Multa de la DSA?").answer == NOT_FOUND and not calls
+    pipeline.sufficiency = lambda q, hits: 0.9
+    assert pipeline.answer("¿Qué dice el artículo 5?").citations == ["d-0001"]
+
+
+def test_wilson_interval_and_paired_bootstrap():
+    from rag.stats import paired_bootstrap, wilson
+
+    lo, hi = wilson(0, 46)
+    assert lo == 0 and abs(hi - 0.077) < 0.001
+    lo, hi = wilson(23, 46)
+    assert lo < 0.5 < hi
+    same = paired_bootstrap([1, 0, 1, 0], [1, 0, 1, 0])
+    assert same["diff"] == 0 and same["ci95"] == [0, 0] and same["p_not_better"] == 1
+
+
+def test_calibration_picks_the_middle_of_the_tied_range():
+    from rag.calibrate import candidates, choose
+
+    rows = [
+        {
+            "answerable": True,
+            "top_score": 0.99,
+            "sufficiency": 1,
+            "generator_refused": False,
+            "answer": "Respuesta.",
+            "keyword": True,
+        },
+        {
+            "answerable": True,
+            "top_score": 0.95,
+            "sufficiency": 1,
+            "generator_refused": False,
+            "answer": "Respuesta.",
+            "keyword": True,
+        },
+        {
+            "answerable": False,
+            "top_score": 0.50,
+            "sufficiency": 1,
+            "generator_refused": False,
+            "answer": "Respuesta.",
+            "keyword": None,
+        },
+    ]
+    t, s = choose(rows, [(t, 0.0) for t in candidates([r["top_score"] for r in rows])])
+    assert 0.5 < t < 0.95 and s == 0
+
+
+@pytest.mark.parametrize(
+    "answer, disguised",
+    [
+        (
+            "La multa no se especifica directamente en los documentos proporcionados. Sin embargo, "
+            "el artículo 99 dice... [F1]",
+            True,
+        ),
+        ("La información proporcionada no especifica quién dirige la Oficina de IA.", True),
+        ("La ley china no se menciona en los fragmentos. Los documentos tratan...", True),
+        (NOT_FOUND, False),  # already a refusal, not a disguised one
+        ("El reglamento no se aplicará a los sistemas de código abierto [F1], salvo...", False),
+        ("No. El plazo general es de quince días [F2]; los documentos no indican otro.", False),
+    ],
+)
+def test_disguised_refusals_are_detected_in_the_first_sentence(answer, disguised):
+    from rag.generate import hedges
+
+    assert hedges(answer) is disguised
+
+
+def test_disguised_refusal_becomes_not_found():
+    from rag.generate import RagPipeline
+
+    pipeline = RagPipeline(rerank=True, translate_query=False)
+    pipeline.min_score = 0.5
+    pipeline.retrieve = lambda q, k, r: [Hit(_chunk("d-0001", "texto"), 0.99)]
+    pipeline.generate = lambda prompt, thinking=None: (
+        "El dato no se especifica en los documentos proporcionados. Sin embargo, [F1] dice..."
+    )
+    assert pipeline.answer("¿Multa del RGPD?").answer == NOT_FOUND

@@ -106,7 +106,8 @@ def load_gold(path: str | Path) -> list[dict]:
     return [
         json.loads(line)
         for line in Path(path).read_text(encoding="utf-8").splitlines()
-        if line.strip()
+        # Lines starting with // are questions the team has commented out while reviewing.
+        if line.strip() and not line.lstrip().startswith("//")
     ]
 
 

@@ -16,6 +16,7 @@ rag/corpus/*
 !rag/corpus/.gitkeep
 rag/index/
 outputs/
+logs/
 runs/
 wandb/
 .cache/

@@ -80,9 +80,12 @@ leyendo vuestro corpus, y con alguna que el corpus no puede responder, y miraré
 | `chunking.py` | hecho | Recursivo y semántico (distancia entre frases consecutivas con umbral); estadísticas |
 | `embed.py` | hecho | Qwen3-Embedding-0.6B con instrucción para las consultas |
 | `retriever.py` | hecho | BM25, denso (matriz NumPy persistida en `index/`), híbrido con min-max y λ, y reranker Qwen3-Reranker |
-| `generate.py` | hecho | Consulta traducida, reranking, umbral de «No lo sé», citas por etiqueta y generación con Qwen3-4B; detrás de `/rag` |
+| `generate.py` | hecho | Consulta traducida, reranking, umbral de «No lo sé», detector de rechazos camuflados, citas por etiqueta y generación con Qwen3-4B; detrás de `/rag` |
 | `evaluate.py` | hecho | Hit@k, Recall@k y MRR por chunking y retriever, barrido de λ y de instrucciones, figuras |
-| `evaluate_answers.py` | hecho | Citas válidas y relevantes, dato clave, negativas correctas; comparación sin RAG |
-| `judge.py` | hecho | Juez (Qwen3-4B en modo razonamiento): corrección frente a la evidencia y fidelidad a las citas |
-| `gold/gold.jsonl` | borrador | 51 preguntas (46 con evidencia literal, 6 con alternativas, y 5 sin respuesta) |
+| `evaluate_answers.py` | hecho | Recuperación (pasaje y fuentes imprescindibles), relevancia de las citas y respuesta (dato clave, negativas), por tipo y dificultad; comparación sin RAG |
+| `judge.py` | hecho | Juez (Qwen3-4B en modo razonamiento): corrección frente a la respuesta de referencia, fidelidad a las citas y matices jurídicos |
+| `calibrate.py` | hecho | Elige los umbrales de «No lo sé» con `gold/threshold_val.jsonl` y los mide una vez en el conjunto dorado |
+| `stats.py` | hecho | Intervalos de Wilson, bootstrap y bootstrap emparejado para comparar configuraciones |
+| `gold/gold.jsonl` | borrador v2, pendiente de revisión | 71 preguntas: 35 factuales, 12 inferenciales (varias fuentes), 10 casos prácticos y 14 sin respuesta; con `expected_answer`, `legal_caveats`, `required_sources`, autoridad de cada fuente y `review` |
+| `gold/threshold_val.jsonl` | borrador | 36 preguntas (16 con respuesta, 20 sin ella, 16 de borde) solo para calibrar los umbrales; no se mezclan con el conjunto dorado |
 | `CORPUS.md` | hecho | Fuentes, licencias y calidad del texto |

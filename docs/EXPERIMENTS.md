@@ -1025,3 +1025,112 @@ siendo un borrador que el equipo tiene que revisar. Con n = 46, una pregunta son
 Ficheros: `reports/phase3_eval.json` (incluye `rerank`), `phase3_answers.json` (final, con juez),
 `phase3_answers_pool20.json`, `phase3_answers_top8.json`, `phase3_answers_thinking.json`,
 `phase3_answers_before_rerank.json`, `phase3_answers_closed_book.json`.
+
+### 2026-11-04 · Fase 3 · Conjunto dorado v2, umbral de «No lo sé» calibrado aparte e intervalos de confianza
+
+**Por qué.** La entrada anterior dejaba tres puntos débiles: el umbral de 0,975 se eligió con el
+mismo conjunto que lo evalúa, las cifras no tenían incertidumbre (con n = 46, una pregunta son
+2,2 puntos) y una revisión externa del conjunto dorado señaló que tenía pocas preguntas sin
+respuesta (5 de 51), que casi todas se resolvían localizando una frase y que `answer_keywords`
+premia respuestas incompletas.
+
+**Conjunto dorado v2** (`rag/gold/gold.jsonl`). **Sigue siendo un borrador de Claude: cada fila
+lleva `"review": "pendiente"` hasta que el equipo la revise.** Cambios:
+
+- Campos nuevos en todas las filas: `question_type` (factual, inferencial, caso práctico, no
+  respondible), `difficulty`, `expected_answer` (respuesta jurídica completa), `legal_caveats`
+  (excepciones y condiciones que no se deben omitir), `required_sources` (grupos de fuentes
+  imprescindibles: hay que recuperar al menos una de cada grupo) y `authority` en cada evidencia
+  (reglamento vinculante, considerando, directrices no vinculantes, borrador en consulta).
+- 12 preguntas nuevas entre fuentes o con condiciones (q52-q58, más q05, q06, q15, q28 y q42
+  reclasificadas) y 10 casos prácticos (q59-q63 nuevos; q22, q25, q38, q41 y q43
+  reclasificados). Ejemplos: el banco que evalúa la solvencia (Anexo III + Art. 27), el
+  sistema de código abierto que puntúa a los vecinos (Art. 2.12 + Art. 5.1.c) y el seguimiento
+  del estrés de los empleados (directrices, apartado 257).
+- 9 preguntas nuevas sin respuesta (q64-q72), 8 de ellas «de borde»: el tema está en el corpus,
+  el dato no (horas de formación, norma ISO obligatoria, sentencias del TJUE sobre el Art. 5…).
+  Son 14 de 71 (20 %).
+- Reformuladas, siguiendo la revisión: q14 (se pregunta por el plazo *general*; 2 y 10 días
+  quedan como matices), q15 (las excepciones del código abierto pasan a ser lo que se mide; las
+  palabras clave ya no premian el «no» categórico) y q38 (es un sistema de IA el que infiere a
+  partir de la cara del empleado).
+- q01 sigue comentada con `//`, como la dejó el equipo; `load_gold` ignora esas líneas.
+
+Reparto: 35 factuales (49 %), 12 inferenciales (17 %), 10 casos (14 %) y 14 sin respuesta
+(20 %). La revisión proponía 30/30/20/20. No llegamos porque habría que quitar factuales que
+están bien o escribir otras 25 preguntas difíciles. Lo dejamos al equipo, que es quien debe
+escribirlas.
+
+**Umbral calibrado aparte** (`rag/calibrate.py`). Hay un conjunto de validación nuevo,
+`rag/gold/threshold_val.jsonl` (16 con respuesta y 20 sin ella, 16 de borde), que solo sirve para
+elegir umbrales y no comparte preguntas con el dorado. Para cada pregunta se guardan, sin ninguna
+barrera, la puntuación del reranker, una señal de suficiencia (P(«los fragmentos contienen el
+dato») según el generador) y la respuesta generada. Las políticas se evalúan después sin GPU:
+
+| Política | Validación: rechazos falsos / correctos | Dorado v2: rechazos falsos / correctos |
+|---|---|---|
+| Solo la regla del prompt | 0/16 · 15/20 | 0/57 · 10/14 |
+| Reranker 0,975 (v1, elegido con el dorado) | 0/16 · 17/20 | 0/57 · 12/14 |
+| Umbral del reranker reelegido con validación (0,996) | 0/16 · 20/20 | **5/57** · 14/14 |
+| Solo detector de rechazos camuflados | 0/16 · 18/20 | 0/57 · 12/14 |
+| **Reranker 0,975 + detector** (por defecto) | **0/16 · 19/20** | **0/57 · 13/14** |
+| … + suficiencia 0,5 | 0/16 · 19/20 | 0/57 · 13/14 |
+
+- **El umbral de 0,975 generaliza**: fuera de muestra no da ningún rechazo falso. Reelegirlo con
+  validación sobreajusta, porque las preguntas de borde sacan más de 0,99 en el reranker, igual
+  que las que tienen respuesta. Lo mantenemos.
+- **Rechazos camuflados.** La mayoría de las preguntas que se escapaban no eran alucinaciones:
+  «La multa máxima… no se especifica directamente en los documentos proporcionados. Sin
+  embargo, …» (q47, q48, u05, u07, u11). El modelo sabe que el dato falta, pero no usa la frase
+  fija y rellena con texto relacionado. `rag.generate.hedges` mira solo la primera frase y la
+  convierte en «No lo sé». En unas 250 respuestas a preguntas con respuesta, guardadas en todos
+  los informes, no da ningún falso positivo.
+- **Señal de suficiencia: implementada, pero desactivada** (`ARCA_RAG_MIN_SUFFICIENCY=0`). La
+  primera versión preguntaba «yes/no» y fallaba con las preguntas de sí o no: en q21 («¿Está
+  permitido…?») contestaba «no» a la pregunta en vez de juzgar los fragmentos (P = 0,001). Lo
+  vimos en el conjunto de prueba, no en el de validación: es un fallo de diseño, no un ajuste
+  (`reports/phase3_calibration_yesno.json`). Con etiquetas A/B la señal es casi binaria (todas
+  las preguntas con respuesta superan 0,9999). Con el umbral natural de 0,5 no añade nada encima
+  del reranker y del detector, y cuesta una pasada más del modelo.
+- **Lo que sigue escapándose:** q70 presenta sentencias de 2020 que citan las directrices como si
+  trataran del Art. 5 (un error real), y u06 responde con la Directiva 2024/2853, que sí aparece
+  en las directrices (discutible).
+
+**Juez** (`rag/judge.py`). Ahora compara con `expected_answer` y comprueba los `legal_caveats`
+(campo nuevo `caveats`). En 4 de 57 filas (q05, q16, q61 y q62) el razonamiento greedy de Qwen3
+entraba en bucle («the answer is correct, faithful, and…» repetido) hasta agotar los tokens, sin
+escribir el JSON. Quintuplicar el presupuesto no lo arregla. Con el muestreo que recomienda la
+ficha del modelo para el modo razonamiento (T = 0,6, top-p 0,95, top-k 20, semilla 0), las
+cuatro reciben veredicto (`"retried": true`). Leída a mano, q61 es más bien «no» que
+«parcial»: su primera frase dice que corregir exámenes *no* es de alto riesgo.
+
+**Resultados con el dorado v2** (`reports/phase3_answers.json`, `reports/phase3_ci.json`;
+intervalos de Wilson al 95 %):
+
+| Etapa | Métrica | Total (57 con respuesta) | Factual (35) | Inferencial (12) | Caso (10) |
+|---|---|---|---|---|---|
+| Recuperación | Pasaje relevante entre los 5 | 84 % [73, 92] | 86 % | 83 % | 80 % |
+| Recuperación | Todas las fuentes imprescindibles | 88 % [77, 94] | 91 % | 83 % | 80 % |
+| Relevancia | Cita el pasaje relevante | 72 % | 77 % | 67 % | 60 % |
+| Respuesta | Dato clave | 89 % [79, 95] | 86 % | 92 % | 100 % |
+| Respuesta | Juez: correcta | 89 % [79, 95] | 89 % | 100 % | 80 % |
+| Respuesta | Juez: fiel a las citas | 96 % [88, 99] | 97 % | 100 % | 90 % |
+| Respuesta | Juez: respeta los matices | 91 % [80, 96] | 90 % | 83 % | 100 % |
+| Negativas | Rechazos falsos | 0 % [0, 6] | | | |
+| Negativas | «No lo sé» en las 14 sin respuesta | 93 % [69, 99] | | | |
+
+Por dificultad, las 8 preguntas difíciles con respuesta solo recuperan el pasaje en el 50 % de
+los casos y citan el relevante en 1 de 8. Ahí está el margen de mejora, no en las factuales.
+
+**Cuánto de lo anterior era ruido** (bootstrap emparejado sobre el dorado v1, final menos
+variante): el reranker con la consulta traducida es una mejora clara (+26 puntos en recuperación,
+IC [+13, +39]). En cambio, la ventaja sobre 20 candidatos por lista (+6,5 [-2, +15]) no es
+significativa, y la de 5 frente a 8 fragmentos solo lo es en fidelidad (+8,7 [+2, +17]). El
+«no compensa» de la entrada anterior se sostiene para la fidelidad, no para la corrección.
+
+**Pendiente del equipo:** revisar las 71 filas y cambiar `review`. Si cambian preguntas, se
+recalcula todo con `rag.evaluate_answers`, `rag.judge`, `rag.calibrate` y `rag.stats`. Las
+tablas de chunking, λ y reranker de las entradas anteriores siguen medidas con el dorado v1.
+
+Ficheros: `reports/phase3_calibration.json`, `phase3_calibration_yesno.json`,
+`phase3_answers.json` (v2), `phase3_answers_gold_v1.json` (la final anterior), `phase3_ci.json`.

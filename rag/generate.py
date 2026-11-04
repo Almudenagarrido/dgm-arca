@@ -49,11 +49,31 @@ DEFAULT_CHUNKING = "semantic-0.70+title"
 DEFAULT_LAMBDA = "0.3"
 DEFAULT_RERANK_POOL = "30"
 DEFAULT_TRANSLATE = "1"
-# Reranker probability below which the pipeline answers NOT_FOUND without generating. On the gold
-# set the lowest answerable question scores 0.990 and four of the five unanswerable ones 0.960
-# or less (docs/EXPERIMENTS.md).
+# Reranker probability below which the pipeline answers NOT_FOUND without generating. Chosen on
+# the gold set in v1; on the separate validation set (rag/gold/threshold_val.jsonl) it gives no
+# false refusals, and re-choosing it there (0.996) overfits: 5 false refusals on the gold set
+# (rag/calibrate.py, docs/EXPERIMENTS.md).
 DEFAULT_MIN_SCORE = "0.975"
 FUSION_POOL = 75
+# Second barrier (off unless ARCA_RAG_MIN_SUFFICIENCY is set): the generator itself is asked
+# whether the passages contain the exact fact, and below this probability the answer is
+# NOT_FOUND. Calibrated on rag/gold/threshold_val.jsonl, not on the gold set
+# (rag/calibrate.py, docs/EXPERIMENTS.md).
+DEFAULT_MIN_SUFFICIENCY = "0"
+
+SUFFICIENCY_PROMPT = """Passages:
+{chunks}
+
+Question: {question}
+
+Your task is not to answer the question. Decide only whether the passages above state the \
+information needed to answer it (whatever the answer is, including a yes or a no). A passage on \
+the same topic that lacks that specific information does not count.
+
+A: the passages contain the information needed to answer the question.
+B: the passages do not contain it.
+
+Reply with a single letter, A or B."""
 
 
 def _flag(name: str, default: str) -> bool:
@@ -107,6 +127,21 @@ def resolve_labels(answer: str, hits: list[Hit]) -> tuple[str, list[str]]:
 
 def says_not_found(answer: str) -> bool:
     return answer.strip().strip('«»"').lower().startswith("no lo sé")
+
+
+# A refusal in disguise: «X no se especifica en los documentos proporcionados. Sin embargo, ...».
+# The generator knows the fact is missing but skips the fixed sentence and fills the answer with
+# related text (q47 and most validation escapes, docs/EXPERIMENTS.md). Only the first sentence
+# is checked, and it must say that the documents/passages do not contain it.
+_VERBS = "especifica|menciona|indica|detalla|proporciona|precisa|contiene|aparece|incluye|establece"
+_MISSING = rf"no (?:se )?(?:{_VERBS})n?"
+_DOCS = r"(?:fragmentos|documentos|información|textos|pasajes)"
+HEDGE_PATTERN = re.compile(rf"\b{_MISSING}\b.*\b{_DOCS}\b|\b{_DOCS}\b.*\b{_MISSING}\b", re.I)
+
+
+def hedges(answer: str) -> bool:
+    first = re.split(r"(?<=[.!?])\s", answer.strip(), maxsplit=1)[0]
+    return bool(HEDGE_PATTERN.search(first)) and not says_not_found(answer)
 
 
 def extract_citations(answer: str, valid_ids: set[str]) -> list[str]:
@@ -195,7 +230,8 @@ class RagPipeline:
     candidates with Qwen3-Reranker), ``ARCA_RAG_RERANK_POOL`` (how many candidates),
     ``ARCA_RAG_TRANSLATE`` (``1``: also search with an English translation of the question),
     ``ARCA_RAG_THINKING`` (``1``: Qwen3 reasons before answering), ``ARCA_RAG_MIN_SCORE``
-    (reranker score under which the answer is ``NOT_FOUND``).
+    (reranker score under which the answer is ``NOT_FOUND``), ``ARCA_RAG_MIN_SUFFICIENCY``
+    (generator's P(the passages contain the fact) under which the answer is ``NOT_FOUND``).
     The defaults are the ones the gold set chose (``docs/EXPERIMENTS.md``).
     """
 
@@ -226,6 +262,9 @@ class RagPipeline:
         )
         self.thinking = thinking if thinking is not None else _flag("ARCA_RAG_THINKING", "0")
         self.min_score = float(os.environ.get("ARCA_RAG_MIN_SCORE", DEFAULT_MIN_SCORE))
+        self.min_sufficiency = float(
+            os.environ.get("ARCA_RAG_MIN_SUFFICIENCY", DEFAULT_MIN_SUFFICIENCY)
+        )
         self.retrievers: dict = {}
         self.reranker = None
 
@@ -276,8 +315,12 @@ class RagPipeline:
         order = sorted(range(len(candidates)), key=lambda i: scores[i], reverse=True)[:top_k]
         return [Hit(candidates[i].chunk, scores[i]) for i in order]
 
-    def generate(self, prompt: str, thinking: bool | None = None) -> str:
-        """Greedy answer; with ``thinking`` Qwen3 reasons first (the reasoning is dropped)."""
+    def generate(self, prompt: str, thinking: bool | None = None, sample: bool = False) -> str:
+        """Greedy answer; with ``thinking`` Qwen3 reasons first (the reasoning is dropped).
+
+        ``sample`` uses the sampling the Qwen3 model card recommends for thinking mode
+        (temperature 0.6, top-p 0.95, top-k 20): greedy decoding can loop while reasoning.
+        """
         import torch
 
         thinking = self.thinking if thinking is None else thinking
@@ -292,13 +335,36 @@ class RagPipeline:
             out = self.model.generate(
                 **inputs,
                 max_new_tokens=self.max_new_tokens * (4 if thinking else 1),
-                do_sample=False,
+                do_sample=sample,
+                **({"temperature": 0.6, "top_p": 0.95, "top_k": 20} if sample else {}),
                 pad_token_id=self.tokenizer.pad_token_id or self.tokenizer.eos_token_id,
             )
         raw = self.tokenizer.decode(
             out[0, inputs["input_ids"].shape[1] :], skip_special_tokens=True
         )
         return raw.split("</think>", 1)[-1].strip()
+
+    def sufficiency(self, question: str, hits: list[Hit]) -> float:
+        """P(A) that the passages contain the fact asked for, from one forward pass.
+
+        The labels are A/B, not yes/no: with yes/no the model answered yes/no *questions*
+        («¿Está permitido...?» -> "no") instead of judging the passages.
+        """
+        import torch
+
+        prompt = SUFFICIENCY_PROMPT.format(chunks=format_chunks(hits), question=question)
+        text = self.tokenizer.apply_chat_template(
+            [{"role": "user", "content": prompt}],
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=False,
+        )
+        inputs = self.tokenizer(text, return_tensors="pt").to(self.model.device)
+        with torch.no_grad():
+            logits = self.model(**inputs, logits_to_keep=1).logits[0, -1]
+        found = self.tokenizer.convert_tokens_to_ids("A")
+        missing = self.tokenizer.convert_tokens_to_ids("B")
+        return torch.softmax(logits[[missing, found]].float(), dim=0)[1].item()
 
     def translate(self, question: str) -> str:
         """English version of the question, to search the English-only documents too."""
@@ -318,7 +384,11 @@ class RagPipeline:
             # Not even the best candidate answers the question according to the reranker:
             # say so instead of letting the generator fill the gap with related text.
             return to_response(NOT_FOUND, hits, retriever, self.model_id)
+        if self.min_sufficiency > 0 and self.sufficiency(question, hits) < self.min_sufficiency:
+            return to_response(NOT_FOUND, hits, retriever, self.model_id)
         answer, invalid = resolve_labels(self.generate(build_prompt(question, hits)), hits)
+        if hedges(answer):
+            return to_response(NOT_FOUND, hits, retriever, self.model_id)
         return to_response(answer, hits, retriever, self.model_id, invalid)
 
 
