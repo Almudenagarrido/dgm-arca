@@ -268,9 +268,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument(
-        "--scenarios", default="rlm/data/external/aiact_benchmark_scenarios.json"
-    )
+    parser.add_argument("--scenarios", default="rlm/data/external/aiact_benchmark_scenarios.json")
     parser.add_argument("--model", default="Qwen/Qwen3-8B")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--thinking", action="store_true", help="let Qwen3 think before the JSON")
@@ -290,8 +288,10 @@ def main() -> None:
         rows.append(
             {
                 "id": index,
-                "scenario": {k: scenario.get(k) for k in ("role", "domain", "system_type",
-                                                          "intended_use", "input_data")},
+                "scenario": {
+                    k: scenario.get(k)
+                    for k in ("role", "domain", "system_type", "intended_use", "input_data")
+                },
                 "benchmark_label": gold,
                 "benchmark_articles": scenario.get("related_articles", []),
                 "profile": profile.to_dict() if profile is not None else None,

@@ -20,7 +20,7 @@ GEN = AIActGenerator()
 
 @pytest.mark.parametrize(
     ("split", "family"),
-    [(split, name) for split in ("train", "ood") for name in FAMILIES[split]],
+    [(split, name) for split in ("train", "test", "ood") for name in FAMILIES[split]],
 )
 def test_every_family_produces_its_label_and_states_its_flags(split, family):
     label, sample = FAMILIES[split][family]
@@ -34,7 +34,7 @@ def test_every_family_produces_its_label_and_states_its_flags(split, family):
 
 
 def test_every_label_has_families_in_train_and_ood():
-    for split in ("train", "ood"):
+    for split in ("train", "test", "ood"):
         assert {label for label, _ in FAMILIES[split].values()} == set(LABELS)
 
 
@@ -46,8 +46,9 @@ def test_ood_families_never_appear_in_train():
 def splits():
     train = GEN.generate(400, "train", seed=1)
     seen = {GEN.key(p.params) for p in train}
-    test = GEN.generate(80, "test", seed=1, exclude=seen)
-    ood = GEN.generate(40, "ood", seed=1, exclude=seen)
+    texts = {GEN.case_text(p.params) for p in train}
+    test = GEN.generate(80, "test", seed=1, exclude=seen, exclude_texts=texts)
+    ood = GEN.generate(40, "ood", seed=1, exclude=seen, exclude_texts=texts)
     return train, test, ood
 
 
@@ -62,6 +63,40 @@ def test_no_case_is_shared_between_splits(splits):
     train, test, ood = splits
     keys = [{GEN.key(p.params) for p in s} for s in (train, test, ood)]
     assert not keys[0] & keys[1] and not keys[0] & keys[2] and not keys[1] & keys[2]
+
+
+def _fact_sentences(split: str) -> set[str]:
+    """Every fact sentence a split's families can produce (sampled until it stops growing)."""
+    found: set[str] = set()
+    for name, (_, sample) in FAMILIES[split].items():
+        rng = random.Random(name)
+        for _ in range(400):
+            found.update(sample(rng).sentences)
+    return found
+
+
+def test_test_and_ood_never_reuse_a_train_fact_sentence():
+    """The in-distribution test measures new cases: no sentence that states a legal fact is
+    shared with train (until 2026-11, 193/200 test cases reused train's sentences)."""
+    train = _fact_sentences("train")
+    assert not train & _fact_sentences("test")
+    assert not train & _fact_sentences("ood")
+
+
+def test_test_and_ood_fillers_and_frames_agree_with_feminine_subjects():
+    from rlm.audit_data import MASCULINE_AFTER_SUBJECT
+    from rlm.generate_aiact import FILLERS, FRAMES_BY_SPLIT
+
+    for split in ("test", "ood"):
+        for text in FILLERS[split] + FRAMES_BY_SPLIT[split]:
+            assert not MASCULINE_AFTER_SUBJECT.search(text), (split, text)
+
+
+def test_test_and_ood_cases_have_unique_texts(splits):
+    train, test, ood = splits
+    texts = [{GEN.case_text(p.params) for p in s} for s in (train, test, ood)]
+    assert len(texts[1]) == len(test) and len(texts[2]) == len(ood)
+    assert not texts[0] & texts[1] and not texts[0] & texts[2]
 
 
 def test_descriptions_do_not_leak_the_label(splits):

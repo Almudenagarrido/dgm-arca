@@ -1217,3 +1217,176 @@ semantic-0.70+title`; intervalos de Wilson al 95 % en `reports/phase3_ci.json`):
 Ficheros: `reports/phase3_eval.json` (v2, con `rerank` sobre la configuración desplegada y
 `rerank_semantic-0.50+title`), `phase3_eval_gold_v1.json`, `phase3_ci.json`,
 `phase3_lambda_sweep.png`, `phase3_sentence_distances.png`.
+
+## Auditoría de datos
+
+### 2026-11-10 · Fases 1 y 3 · Auditoría automática de los datos antes de la fase 4
+
+> **Actualización 2026-11-13:** el test de la fase 1 se ha reescrito y las cuatro palabras
+> clave del dorado están corregidas; ver la entrada siguiente. Las cifras de esta entrada son
+> las del test antiguo (`rlm/data/test_v1.jsonl`).
+
+**Por qué.** Antes de construir el agente sobre los datos de las fases 1 y 3 queríamos saber qué
+errores mecánicos tienen, más allá de lo que el generador y la revisión fila a fila garantizan.
+Dos scripts nuevos, sin GPU y en menos de un segundo: `rlm/audit_data.py` y `rag/audit_gold.py`
+(`make audit`, informes en `reports/phase1_data_audit.json` y `reports/phase3_gold_audit.json`,
+tests en `tests/test_data_audits.py`). **No hemos regenerado ni reentrenado nada**: las cifras de
+las entradas anteriores siguen siendo las de los ficheros auditados.
+
+**Fase 1** (`uv run python -m rlm.audit_data --details`):
+
+| Split | Filas | Etiqueta ≠ motor | Duplicados exactos | Concordancia | Casi copia de train | Frases del caso vistas en train |
+|---|---|---|---|---|---|---|
+| train | 1000 | 0 | 0 | 50 | — | — |
+| test | 200 | 0 | 0 | 9 | 4 | **193 (96 %)** |
+| OOD | 100 | 0 | 0 | 4 | 0 | 0 (0 %) |
+
+- **Las etiquetas están bien.** Las 1300 filas coinciden con el motor actual, y ninguna traza
+  de SFT (ni de `sft_traces_merged` ni del remuestreo) contiene una pregunta de test u OOD.
+- **El test «en distribución» comparte casi siempre el caso con train.** En 193 de los 200 casos,
+  las frases que llevan los hechos jurídicos son exactamente las de algún caso de train. Solo
+  cambian el marco (ficha, correo…), la organización, el sujeto o las frases de relleno. La clave
+  de deduplicación es semántica (familia, perfil, escenario, organización) y no incluye el
+  texto, así que «fuga 0» (entrada del 26-10) significa que no se repite la combinación, no que
+  el caso sea nuevo. Consecuencia: el 82,5 % de test mide sobre todo si el modelo reconoce casos
+  ya vistos con otro envoltorio. **La cifra de generalización es la de OOD (80,0 %)**, que no
+  comparte ni una frase con train. La diferencia entre las dos es pequeña (2,5 puntos con GRPO,
+  4 con SFT), lo que sugiere que el modelo no se limita a memorizar, pero el test no lo
+  demuestra por sí solo. Los 7 casos de test con frases nuevas son pocos para medir nada
+  (GRPO acierta 5).
+- **4 casos de test son copias casi literales de train** (#129, #154, #182 y #183; los cuatro de
+  `derogation*`). En `_derogation_case`, el identificador del escenario incluye el índice del
+  uso (`o{k}`), pero el texto no cambia con ese índice cuando dos usos comparten organización.
+  La clave cambia y el texto no. GRPO acierta 3 de 4, así que el efecto en la cifra es menor de
+  un punto.
+- **Errores de concordancia.** El sujeto femenino («la solución de IA», «la herramienta», «la
+  aplicación») se combina con frases escritas en masculino: «está integrado en un juguete»
+  (plantilla de `annex_i`) y el relleno «Está construido sobre un modelo de lenguaje de código
+  abierto». Son 50 filas de train, 9 de test y 4 de OOD. No cambian los hechos, pero son ruido
+  que el modelo ve en el SFT.
+
+**Fase 3** (`uv run python -m rag.audit_gold`): con el corpus descargado, todas las fuentes
+existen, todas las evidencias aparecen literalmente en su documento, no hay ids ni
+preguntas repetidas y el dorado no comparte preguntas con `threshold_val.jsonl`. Hay un solo
+tipo de problema: **en 4 filas ninguna `answer_keywords` aparece en la propia
+`expected_answer`** (q15, q22, q44 y q60). Por ejemplo, q44 exige «CV» o «currículum» y la
+respuesta de referencia dice «currículos». Una respuesta igual a la referencia fallaría la
+métrica de dato clave. Ahora no afecta a las cifras (el modelo acierta las cuatro por otras
+palabras), pero conviene corregirlo al revisar. Las 71 filas siguen con `review: pendiente`,
+igual que la hoja de auditoría del motor (`rlm/data/audit/benchmark_audit.csv`: 0 de 40 con
+veredicto humano).
+
+**Qué haríamos si se regeneran los datos de la fase 1** (no lo hacemos ahora porque obliga a
+repetir destilación, SFT, GRPO y evaluación):
+
+1. Deduplicar también por el texto normalizado (sin sujeto ni relleno) y dejar `o{k}` fuera de
+   la clave cuando no cambia el texto.
+2. Reservar para test una parte de las frases de cada familia (como hace OOD con el dominio
+   educativo), para que el test mida casos nuevos dentro de las familias conocidas.
+3. Reescribir las dos frases sin género: «forma parte de un juguete conectado» y «Se basa en un
+   modelo de lenguaje de código abierto».
+
+`audit_data.py` regenera los splits con la semilla de `generation_stats.json` y comprueba que
+coinciden con los ficheros antes de medir el solapamiento, así que avisará si alguien cambia el
+generador sin regenerar los datos.
+
+### 2026-11-13 · Fase 1 · Test nuevo sin frases de train y reevaluación
+
+**Por qué.** La auditoría del 10-11 mostró que 193 de los 200 casos del test compartían con
+train las frases que llevan los hechos jurídicos. El 82,5 % de GRPO medía, sobre todo, si el
+modelo reconoce casos ya vistos con otro envoltorio. Para medir la clasificación de casos
+nuevos dentro de las familias conocidas hacía falta un test con texto nuevo.
+
+**Qué hemos hecho** (`rlm/generate_aiact.py`):
+
+- **Train no cambia.** Los modelos se entrenaron con él, así que se regenera byte a byte igual
+  (`audit_data` lo comprueba). No hemos repetido ni destilación, ni SFT, ni GRPO.
+- **Test con frases propias.** Las 23 familias de train, con las mismas etiquetas, artículos y
+  pesos, ahora sacan las frases de conjuntos reservados (`*_T`) escritos solo para el test:
+  escenarios distintos (p. ej., arritmias en electrocardiogramas en lugar de tumores en
+  radiografías), otra redacción para identificación biométrica remota, excepciones del 6.3,
+  perfilado, chatbot y Anexo III, y frases de relleno propias. El test cubre ahora también
+  `biometric_plain`, `exception` y `annex_i`, que en el antiguo no salieron.
+- **OOD** usa las frases nuevas de perfilado y chatbot, que son las que deciden la etiqueta.
+  Antes 15 casos compartían una de esas frases con train.
+- **Deduplicación por texto** en test y OOD, además de por clave semántica. Corrige la causa de
+  las 4 casi copias (`_derogation_case`). Train tiene 7 repeticiones internas de este tipo y se
+  quedan.
+- **Concordancia.** La auditoría solo detectaba los participios. Hay más fallos con sujeto
+  femenino: «Lo ha desarrollado…», «Se prevé desplegarlo…», «lo usen», y el marco «Quien lo
+  despliega es…». Test y OOD usan versiones corregidas con el mismo número de entradas, así
+  que los sorteos de OOD no cambian. Con el detector ampliado, train tiene 274 filas
+  afectadas; no las tocamos porque son el train con el que se entrenó.
+
+**Auditoría** (`make audit`). La similitud es la de `difflib` con el caso de train más
+parecido de la misma familia (de cualquier familia, para OOD):
+
+| Split | Caso visto en train | Alguna frase de hechos en train | Similitud media / máx. | Concordancia |
+|---|---|---|---|---|
+| test antiguo | 193 (96 %) | 198 | 0,99 / 1,00 | 9 |
+| **test nuevo** | **0** | **0** | **0,46 / 0,81** | **0** |
+| OOD antiguo | 0 | 15 | 0,59 / 0,83 | 4 |
+| **OOD nuevo** | **0** | **0** | **0,57 / 0,82** | **0** |
+
+El máximo de 0,81 corresponde a dos casos distintos de producto sanitario que comparten la
+expresión jurídica obligatoria («evaluación de conformidad de un organismo notificado»). Los
+tests nuevos (`tests/test_generate_aiact.py`) impiden que test u OOD vuelvan a compartir una
+frase de hechos con train y que reaparezcan los fallos de concordancia.
+
+**Reevaluación** (mismos adaptadores; greedy, 1536 tokens, lotes de 16; intervalos de Wilson
+al 95 %):
+
+| Modelo | Conjunto | Etiqueta | Etiqueta + cita | Formato | Tokens |
+|---|---|---|---|---|---|
+| base | test antiguo | 19,5 % | 5,5 % | 57,5 % | 471 |
+| base | **test nuevo** | 26,5 % | 5,0 % | 58,0 % | 474 |
+| SFT | test antiguo | 71,0 % [64, 77] | 62,0 % [55, 68] | 81,5 % | 895 |
+| SFT | **test nuevo** | **63,0 % [56, 69]** | **51,5 % [45, 58]** | 70,0 % | 1001 |
+| GRPO | test antiguo | 82,5 % [77, 87] | 79,0 % [73, 84] | 92,0 % | 652 |
+| GRPO | **test nuevo** | **75,5 % [69, 81]** | **67,0 % [60, 73]** | 88,5 % | 713 |
+| SFT | OOD nuevo | 67,0 % | 61,0 % | 76,0 % | 958 |
+| GRPO | OOD antiguo | 80,0 % [71, 87] | 73,0 % [64, 81] | 88,0 % | 681 |
+| GRPO | **OOD nuevo** | **83,0 % [74, 89]** | **74,0 % [65, 82]** | 88,0 % | 681 |
+
+- **El test antiguo inflaba la cifra.** Con texto nuevo, GRPO baja 7 puntos en etiqueta y 12
+  en etiqueta + cita, y SFT 8 y 10. La mejora de GRPO sobre SFT se mantiene (+12,5 y +15,5
+  puntos).
+- **OOD apenas cambia** (80 → 83 %, dentro del intervalo), como cabía esperar: ya no compartía
+  casos con train. Ahora test y OOD dicen lo mismo: unos 75–83 % de etiqueta en casos nuevos.
+  Que el test nuevo quede algo por debajo de OOD tiene sentido, porque cubre las 23 familias
+  y las fronteras difíciles (6.3 con perfilado, chatbot) pesan más.
+- **Truncamientos.** Los fallos de formato siguen siendo truncamientos (23/200 con GRPO, 60/200
+  con SFT). Sin contarlos, GRPO acierta la etiqueta en el 85,3 % del test nuevo y en el 94,3 %
+  de OOD.
+- **Por clase** (GRPO, etiqueta / etiqueta + cita, antiguo → nuevo): prohibido 94/92 → 78/76,
+  limitado 92/92 → 84/84, mínimo 86/78 → 82/60, alto riesgo 58/54 → 58/48.
+- **Dónde estaba la memorización.** Hemos revisado los fallos y las etiquetas del test son
+  correctas; lo que falla es el modelo, que se apoyaba en las palabras de train:
+  - `emotion_work`: 8/8 → 0/6. Las frases de train dicen «emociones» o «estado emocional». Las
+    nuevas describen la emoción sin nombrarla («grado de satisfacción», que el considerando 18
+    cita expresamente, o «aburrimiento»), y el modelo responde Anexo III.1.c, mínimo o se
+    trunca.
+  - `police_rbi_prohibited`: 75 → 56 %. Con «identifica en directo, por su cara» en lugar de
+    «reconoce en tiempo real», clasifica como Anexo III.1.a en lugar de Art. 5.1.h.
+  - `annex_iii`: 68 → 50 %. Por ejemplo, el polígrafo descrito como «mide las reacciones
+    fisiológicas» se confunde con el reconocimiento de emociones (5.1.f).
+  - `derogation_chatbot`: 83 → 56 %. El añadido del chatbot con otras palabras ya no le
+    recuerda el Art. 50.1.
+  - Lo que se mantiene: `chatbot`, `synthetic`, `deep_fake`, `manipulation`, `face_scraping`,
+    `biometric_sensitive` y `crime_profiling` siguen al 100 %, y `plain` igual (84 %).
+
+**Qué cambia en las conclusiones.** La cifra de la fase 1 pasa a ser la del test nuevo (75,5 %
+de etiqueta, 67,0 % con cita) junto con OOD (83,0 % / 74,0 %). El modelo generaliza a casos
+nuevos, pero depende de ciertas palabras clave en emociones e identificación biométrica.
+Para corregirlo habría que regenerar train con varias redacciones por hecho jurídico. Eso
+obliga a repetir toda la fase 1 (más de 30 h de GPU), así que lo dejamos como trabajo futuro.
+
+**Fase 3.** Las cuatro filas del dorado cuyas `answer_keywords` no aparecían en la propia
+respuesta de referencia (q15, q22, q44 y q60) tienen ahora también la variante que usa la
+referencia («excluye», «currículo», «anexo iii»…). `rag.audit_gold` ya no da avisos. Al
+volver a puntuar las respuestas guardadas, las cuatro seguían contando como acierto, así que
+las cifras de la fase 3 no cambian.
+
+Ficheros: `rlm/data/test.jsonl` y `test_ood.jsonl` (nuevos), `test_v1.jsonl` y
+`test_ood_v1.jsonl` (antiguos), `reports/eval_test*.json` (nuevos) y `eval_test*_v1.json`
+(antiguos), `reports/phase1_data_audit.json`, `logs/eval_test_v2.log`.

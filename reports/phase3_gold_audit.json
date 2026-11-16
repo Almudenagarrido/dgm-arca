@@ -1,0 +1,47 @@
+{
+  "corpus_checked": true,
+  "gold": {
+    "rows": 71,
+    "question_types": {
+      "factual": 35,
+      "inferencial": 12,
+      "caso_practico": 10,
+      "no_respondible": 14
+    },
+    "review": {
+      "pendiente": 71
+    },
+    "unanswerable": 14,
+    "problems": {
+      "duplicate_ids": [],
+      "duplicate_questions": [],
+      "answerable_without_evidence": [],
+      "unanswerable_with_evidence": [],
+      "keywords_not_in_expected_answer": [],
+      "missing_sources": [],
+      "evidence_not_verbatim": []
+    },
+    "n_problems": 0
+  },
+  "threshold_val": {
+    "rows": 36,
+    "question_types": {
+      "-": 36
+    },
+    "review": {
+      "-": 36
+    },
+    "unanswerable": 20,
+    "problems": {
+      "duplicate_ids": [],
+      "duplicate_questions": [],
+      "answerable_without_evidence": [],
+      "unanswerable_with_evidence": [],
+      "keywords_not_in_expected_answer": [],
+      "missing_sources": [],
+      "evidence_not_verbatim": []
+    },
+    "n_problems": 0
+  },
+  "questions_shared_gold_and_val": []
+}

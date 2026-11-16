@@ -1,0 +1,59 @@
+{
+  "sizes": {
+    "train": 1000,
+    "test": 200,
+    "ood": 100
+  },
+  "train": {
+    "labels": {
+      "prohibido": 250,
+      "alto_riesgo": 250,
+      "riesgo_minimo": 250,
+      "riesgo_limitado": 250
+    },
+    "label_mismatches": 0,
+    "exact_duplicate_descriptions": 0,
+    "agreement_issues": 274
+  },
+  "test": {
+    "labels": {
+      "prohibido": 50,
+      "alto_riesgo": 50,
+      "riesgo_limitado": 50,
+      "riesgo_minimo": 50
+    },
+    "label_mismatches": 0,
+    "exact_duplicate_descriptions": 0,
+    "agreement_issues": 0,
+    "near_duplicates_of_train": 0,
+    "near_duplicate_pairs": [],
+    "case_sentences_seen_in_train": 0,
+    "any_fact_sentence_seen_in_train": 0,
+    "similarity_to_closest_train_case": {
+      "mean": 0.456,
+      "max": 0.812,
+      "rows_above_0.9": 0
+    }
+  },
+  "ood": {
+    "labels": {
+      "alto_riesgo": 25,
+      "prohibido": 25,
+      "riesgo_limitado": 25,
+      "riesgo_minimo": 25
+    },
+    "label_mismatches": 0,
+    "exact_duplicate_descriptions": 0,
+    "agreement_issues": 0,
+    "near_duplicates_of_train": 0,
+    "near_duplicate_pairs": [],
+    "case_sentences_seen_in_train": 0,
+    "any_fact_sentence_seen_in_train": 0,
+    "similarity_to_closest_train_case": {
+      "mean": 0.575,
+      "max": 0.825,
+      "rows_above_0.9": 0
+    }
+  },
+  "regenerated_matches_files": true
+}

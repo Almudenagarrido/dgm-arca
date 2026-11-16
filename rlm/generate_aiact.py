@@ -16,11 +16,14 @@ How a problem is built:
 4. ``render`` wraps the sentences in one of several frames (product sheet, internal email,
    compliance ticket...), adds neutral distractors and appends the fixed answer instruction.
 
-Splits. ``train`` and ``test`` share families but never share a case: the deduplication key
-is the semantic content (family, profile, scenario, organisation), not the wording, and test
-is generated after train with train's keys excluded. ``ood`` contains only the education
-domain (Annex III point 3, emotion recognition in classrooms, tutoring chatbots), which never
-appears in train or test.
+Splits. ``train`` and ``test`` share families (labels and articles) but not wording: the test
+families draw from held-out pools (``*_T``) written only for it, with their own scenarios and
+fillers, so no sentence that states a legal fact appears in both. Test and OOD are also
+deduplicated on the rendered case text, not only on the semantic key. ``ood`` contains only the
+education domain (Annex III point 3, emotion recognition in classrooms, tutoring chatbots),
+which never appears in train or test. Train is frozen: the pools and fillers it uses are kept
+as they were when the models were trained on it (``rlm.audit_data`` checks that it still
+regenerates byte for byte).
 
     uv run python -m rlm.generate_aiact --out-dir rlm/data
 """
@@ -34,6 +37,7 @@ import re
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -78,6 +82,39 @@ DISTRACTORS = (
     "Funciona tanto en la web como en una aplicación móvil.",
     "Se espera que lo usen unas 5.000 personas al mes.",
 )
+# Train keeps its fillers as they were (the models were trained on them). Five of them use a
+# masculine pronoun or participle for the subject, which is wrong with ``la herramienta``…;
+# OOD uses the same list with those five rewritten (same length, so the same draws), and the
+# test has its own fillers.
+_FILLER_FIXES = {
+    "Lo ha desarrollado un proveedor externo con sede en Alemania.": "El desarrollo corre a cargo "
+    "de un proveedor externo con sede en Alemania.",
+    "Se prevé desplegarlo el próximo trimestre.": "El despliegue está previsto para el próximo "
+    "trimestre.",
+    "Está construido sobre un modelo de lenguaje de código abierto.": "Se basa en un modelo de "
+    "lenguaje de código abierto.",
+    "El equipo técnico lo ha desarrollado internamente en Python.": "El equipo técnico ha hecho "
+    "el desarrollo internamente en Python.",
+    "Se espera que lo usen unas 5.000 personas al mes.": "Se esperan unas 5.000 personas usuarias "
+    "al mes.",
+}
+assert set(_FILLER_FIXES) <= set(DISTRACTORS)
+DISTRACTORS_FIXED = tuple(_FILLER_FIXES.get(text, text) for text in DISTRACTORS)
+DISTRACTORS_TEST = (
+    "El proveedor tiene su sede en Francia.",
+    "La interfaz está traducida a cinco idiomas.",
+    "La puesta en marcha está prevista para después del verano.",
+    "Las actualizaciones del modelo se publican cada dos semanas.",
+    "La información se guarda en un centro de datos situado en Irlanda.",
+    "La inversión inicial ronda los 120.000 euros.",
+    "Se conectará con el programa de facturación actual.",
+    "Antes del despliegue se ha hecho una prueba con un grupo reducido de usuarios.",
+    "Se apoya en un modelo de lenguaje comercial.",
+    "El código lo mantiene un equipo de cuatro personas.",
+    "Se puede usar desde el navegador y desde dispositivos móviles.",
+    "Está previsto que reciba unas 20.000 consultas al año.",
+)
+FILLERS = {"train": DISTRACTORS, "test": DISTRACTORS_TEST, "ood": DISTRACTORS_FIXED}
 
 FRAMES = (
     "{Actor} va a poner en marcha un sistema de inteligencia artificial. {desc}",
@@ -91,6 +128,12 @@ FRAMES = (
     "Queremos analizar un caso antes de su lanzamiento. {Actor} utiliza un sistema con estas "
     "características: {desc}",
 )
+
+# Same frames for every split; the one with a masculine pronoun is rewritten outside train.
+FRAMES_FIXED = tuple(
+    "{desc} Quien hace el despliegue es {actor}." if "lo despliega" in f else f for f in FRAMES
+)
+FRAMES_BY_SPLIT = {"train": FRAMES, "test": FRAMES_FIXED, "ood": FRAMES_FIXED}
 
 CHATBOT_ADDON = (
     "Además, {sys} incluye un asistente conversacional que atiende por chat a las personas "
@@ -420,6 +463,14 @@ RBI_AUTH = (
     "Por la urgencia, se usa ya y la autorización judicial se solicita dentro de las 24 horas.",
 )
 RBI_NO_AUTH = "No se ha solicitado ninguna autorización judicial ni administrativa."
+RBI = {
+    "first": "{{Sys}} reconoce en tiempo real las caras de los transeúntes {place}",
+    "places": RBI_PLACES,
+    "no_objective": RBI_NO_OBJECTIVE,
+    "objectives": RBI_OBJECTIVES,
+    "auth": RBI_AUTH,
+    "no_auth": RBI_NO_AUTH,
+}
 RBI_BASE = {
     "remote_biometric_identification": True,
     "real_time": True,
@@ -428,80 +479,81 @@ RBI_BASE = {
 }
 
 
-def f_manipulation(rng: random.Random) -> Case:
-    i, (technique, harm) = pick(rng, MANIPULATION)
+def f_manipulation(rng: random.Random, pool=None, tag: str = "") -> Case:
+    i, (technique, harm) = pick(rng, pool or MANIPULATION)
     j, actor = pick(rng, PRIVATE + BANKS + GENERIC)
     profile = {
         "manipulative_techniques": True,
         "materially_distorts_behaviour": True,
         "significant_harm": True,
     }
-    return Case(profile, ["{Sys} " + technique, harm], actor, f"m{i}-o{j}")
+    return Case(profile, ["{Sys} " + technique, harm], actor, f"{tag}m{i}-o{j}")
 
 
-def f_vulnerability(rng: random.Random) -> Case:
-    i, (actors, technique, harm) = pick(rng, VULNERABILITY)
+def f_vulnerability(rng: random.Random, pool=None, tag: str = "") -> Case:
+    i, (actors, technique, harm) = pick(rng, pool or VULNERABILITY)
     j, actor = pick(rng, actors)
     profile = {
         "exploits_vulnerabilities": True,
         "materially_distorts_behaviour": True,
         "significant_harm": True,
     }
-    return Case(profile, ["{Sys} " + technique, harm], actor, f"v{i}-o{j}")
+    return Case(profile, ["{Sys} " + technique, harm], actor, f"{tag}v{i}-o{j}")
 
 
-def f_social_scoring(rng: random.Random) -> Case:
-    i, (actors, scoring, harm) = pick(rng, SOCIAL_SCORING)
+def f_social_scoring(rng: random.Random, pool=None, tag: str = "") -> Case:
+    i, (actors, scoring, harm) = pick(rng, pool or SOCIAL_SCORING)
     j, actor = pick(rng, actors)
     profile = {"social_scoring": True, "score_causes_detrimental_treatment": True}
-    return Case(profile, ["{Sys} " + scoring, harm], actor, f"s{i}-o{j}")
+    return Case(profile, ["{Sys} " + scoring, harm], actor, f"{tag}s{i}-o{j}")
 
 
-def f_crime_profiling(rng: random.Random) -> Case:
-    i, (actors, text, police) = pick(rng, CRIME_PROFILING)
+def f_crime_profiling(rng: random.Random, pool=None, tag: str = "") -> Case:
+    i, (actors, text, police) = pick(rng, pool or CRIME_PROFILING)
     j, actor = pick(rng, actors)
     profile = {"predicts_individual_crime_risk": True, "based_solely_on_profiling": True}
     if police:
         profile["law_enforcement_use"] = True
-    return Case(profile, ["{Sys} " + text], actor, f"c{i}-o{j}")
+    return Case(profile, ["{Sys} " + text], actor, f"{tag}c{i}-o{j}")
 
 
-def f_face_scraping(rng: random.Random) -> Case:
-    i, text = pick(rng, FACE_SCRAPING)
+def f_face_scraping(rng: random.Random, pool=None, tag: str = "") -> Case:
+    i, text = pick(rng, pool or FACE_SCRAPING)
     j, actor = pick(
         rng, PRIVATE + GENERIC + ("una startup de seguridad", "un proveedor de biometría")
     )
-    return Case({"untargeted_facial_scraping": True}, ["{Sys} " + text], actor, f"f{i}-o{j}")
+    return Case({"untargeted_facial_scraping": True}, ["{Sys} " + text], actor, f"{tag}f{i}-o{j}")
 
 
-def f_emotion_work(rng: random.Random) -> Case:
-    i, text = pick(rng, EMOTION_WORK)
+def f_emotion_work(rng: random.Random, pool=None, tag: str = "") -> Case:
+    i, text = pick(rng, pool or EMOTION_WORK)
     j, actor = pick(rng, EMPLOYERS + GENERIC)
     profile = {"emotion_recognition": True, "workplace_or_education": True}
-    return Case(profile, ["{Sys} " + text], actor, f"e{i}-o{j}")
+    return Case(profile, ["{Sys} " + text], actor, f"{tag}e{i}-o{j}")
 
 
-def f_biometric_sensitive(rng: random.Random) -> Case:
-    i, text = pick(rng, BIOMETRIC_SENSITIVE)
+def f_biometric_sensitive(rng: random.Random, pool=None, tag: str = "") -> Case:
+    i, text = pick(rng, pool or BIOMETRIC_SENSITIVE)
     j, actor = pick(rng, PRIVATE + GENERIC)
     profile = {"biometric_categorisation": True, "infers_sensitive_attributes": True}
-    return Case(profile, ["{Sys} " + text], actor, f"b{i}-o{j}")
+    return Case(profile, ["{Sys} " + text], actor, f"{tag}b{i}-o{j}")
 
 
-def f_police_rbi_prohibited(rng: random.Random) -> Case:
-    i, place = pick(rng, RBI_PLACES)
+def f_police_rbi_prohibited(rng: random.Random, rbi=None, tag: str = "") -> Case:
+    rbi = rbi or RBI
+    i, place = pick(rng, rbi["places"])
     j, actor = pick(rng, POLICE)
-    first = f"{{Sys}} reconoce en tiempo real las caras de los transeúntes {place}"
+    first = rbi["first"].format(place=place)
     if rng.random() < 0.5:
-        k, purpose = pick(rng, RBI_NO_OBJECTIVE)
+        k, purpose = pick(rng, rbi["no_objective"])
         sentences = [f"{first} {purpose}."]
         profile = dict(RBI_BASE)
-        scenario = f"r{i}-n{k}-o{j}"
+        scenario = f"{tag}r{i}-n{k}-o{j}"
     else:
-        k, (objective, purpose) = pick(rng, RBI_OBJECTIVES)
-        sentences = [f"{first} {purpose}.", RBI_NO_AUTH]
+        k, (objective, purpose) = pick(rng, rbi["objectives"])
+        sentences = [f"{first} {purpose}.", rbi["no_auth"]]
         profile = {**RBI_BASE, "rbi_objective": objective}
-        scenario = f"r{i}-u{k}-o{j}"
+        scenario = f"{tag}r{i}-u{k}-o{j}"
     return Case(profile, sentences, actor, scenario)
 
 
@@ -844,9 +896,11 @@ PROFILING_TEXT = (
 )
 
 
-def _annex_iii_case(rng: random.Random, codes: tuple[str, ...]) -> Case:
+def _annex_iii_case(
+    rng: random.Random, codes: tuple[str, ...], cases=None, chatbot_addon=CHATBOT_ADDON, tag=""
+) -> Case:
     i, code = pick(rng, codes)
-    j, (actors, sentence) = pick(rng, ANNEX_III_CASES[code]["uses"])
+    j, (actors, sentence) = pick(rng, (cases or ANNEX_III_CASES)[code]["uses"])
     k, actor = pick(rng, actors)
     profile: dict[str, Any] = {"annex_iii_use_cases": [code]}
     sentences = [sentence]
@@ -855,19 +909,28 @@ def _annex_iii_case(rng: random.Random, codes: tuple[str, ...]) -> Case:
     chatbot = rng.random() < 0.25
     if chatbot:
         profile["interacts_with_persons"] = True
-        sentences.append(CHATBOT_ADDON)
-    return Case(profile, sentences, actor, f"{code}-u{j}-o{k}-c{int(chatbot)}")
+        sentences.append(chatbot_addon)
+    return Case(profile, sentences, actor, f"{tag}{code}-u{j}-o{k}-c{int(chatbot)}")
 
 
 def _derogation_case(
-    rng: random.Random, codes: tuple[str, ...], profiling: bool, chatbot: bool
+    rng: random.Random,
+    codes: tuple[str, ...],
+    profiling: bool,
+    chatbot: bool,
+    cases=None,
+    texts=None,
+    profiling_text=PROFILING_TEXT,
+    chatbot_addon=CHATBOT_ADDON,
+    tag="",
 ) -> Case:
     _, code = pick(rng, codes)
-    data = ANNEX_III_CASES[code]
-    j, derogation = pick(rng, tuple(DEROGATION_TEXTS))
+    data = (cases or ANNEX_III_CASES)[code]
+    texts = texts or DEROGATION_TEXTS
+    j, derogation = pick(rng, tuple(texts))
     k, (actors, _) = pick(rng, data["uses"])
     m, actor = pick(rng, actors)
-    sentence = DEROGATION_TEXTS[derogation].format(
+    sentence = texts[derogation].format(
         sys="{sys}",
         **{
             key: data[key]
@@ -878,11 +941,11 @@ def _derogation_case(
     sentences = [sentence]
     if profiling:
         profile["performs_profiling"] = True
-        sentences.append(PROFILING_TEXT)
+        sentences.append(profiling_text)
     if chatbot:
         profile["interacts_with_persons"] = True
-        sentences.append(CHATBOT_ADDON)
-    return Case(profile, sentences, actor, f"{code}-d{j}-o{k}.{m}")
+        sentences.append(chatbot_addon)
+    return Case(profile, sentences, actor, f"{tag}{code}-d{j}-o{k}.{m}")
 
 
 def f_annex_iii(rng):
@@ -1005,37 +1068,35 @@ POLICE_RECIDIVISM = (
 )
 
 
-def f_biometric_high(rng: random.Random) -> Case:
-    i, (actors, sentence, profile) = pick(rng, BIOMETRIC_HIGH)
+def f_biometric_high(rng: random.Random, pool=None, tag: str = "") -> Case:
+    i, (actors, sentence, profile) = pick(rng, pool or BIOMETRIC_HIGH)
     j, actor = pick(rng, actors)
-    return Case(dict(profile), [sentence], actor, f"bh{i}-o{j}")
+    return Case(dict(profile), [sentence], actor, f"{tag}bh{i}-o{j}")
 
 
-def f_police_rbi_authorised(rng: random.Random) -> Case:
-    i, place = pick(rng, RBI_PLACES)
+def f_police_rbi_authorised(rng: random.Random, rbi=None, tag: str = "") -> Case:
+    rbi = rbi or RBI
+    i, place = pick(rng, rbi["places"])
     j, actor = pick(rng, POLICE)
-    k, (objective, purpose) = pick(rng, RBI_OBJECTIVES)
-    m, auth = pick(rng, RBI_AUTH)
-    sentences = [
-        f"{{Sys}} reconoce en tiempo real las caras de los transeúntes {place} {purpose}.",
-        auth,
-    ]
+    k, (objective, purpose) = pick(rng, rbi["objectives"])
+    m, auth = pick(rng, rbi["auth"])
+    sentences = [f"{rbi['first'].format(place=place)} {purpose}.", auth]
     profile = {**RBI_BASE, "rbi_objective": objective, "rbi_authorised": True}
-    return Case(profile, sentences, actor, f"ra{i}-{k}-{m}-o{j}")
+    return Case(profile, sentences, actor, f"{tag}ra{i}-{k}-{m}-o{j}")
 
 
-def f_annex_i(rng: random.Random) -> Case:
-    i, (product, actors, sentence) = pick(rng, ANNEX_I_HIGH)
+def f_annex_i(rng: random.Random, pool=None, tag: str = "") -> Case:
+    i, (product, actors, sentence) = pick(rng, pool or ANNEX_I_HIGH)
     j, actor = pick(rng, actors)
     profile = {"annex_i_product": product, "third_party_conformity": True}
-    return Case(profile, [sentence], actor, f"ai{i}-o{j}")
+    return Case(profile, [sentence], actor, f"{tag}ai{i}-o{j}")
 
 
-def f_police_recidivism(rng: random.Random) -> Case:
-    i, sentence = pick(rng, POLICE_RECIDIVISM)
+def f_police_recidivism(rng: random.Random, pool=None, tag: str = "") -> Case:
+    i, sentence = pick(rng, pool or POLICE_RECIDIVISM)
     j, actor = pick(rng, POLICE)
     profile = {"predicts_individual_crime_risk": True, "law_enforcement_use": True}
-    return Case(profile, [sentence], actor, f"pr{i}-o{j}")
+    return Case(profile, [sentence], actor, f"{tag}pr{i}-o{j}")
 
 
 # ---------------------------------------------------------------------------- Art. 50
@@ -1079,30 +1140,30 @@ MEDIA = (
 )
 
 
-def f_chatbot(rng: random.Random) -> Case:
-    i, sentence = pick(rng, CHATBOTS)
+def f_chatbot(rng: random.Random, pool=None, tag: str = "") -> Case:
+    i, sentence = pick(rng, pool or CHATBOTS)
     j, actor = pick(rng, PRIVATE + BANKS + INSURERS + GENERIC)
-    return Case({"interacts_with_persons": True}, [sentence], actor, f"cb{i}-o{j}")
+    return Case({"interacts_with_persons": True}, [sentence], actor, f"{tag}cb{i}-o{j}")
 
 
-def f_synthetic(rng: random.Random) -> Case:
-    i, sentence = pick(rng, SYNTHETIC)
+def f_synthetic(rng: random.Random, pool=None, tag: str = "") -> Case:
+    i, sentence = pick(rng, pool or SYNTHETIC)
     j, actor = pick(rng, PRIVATE + GENERIC)
-    return Case({"generates_synthetic_content": True}, [sentence], actor, f"sy{i}-o{j}")
+    return Case({"generates_synthetic_content": True}, [sentence], actor, f"{tag}sy{i}-o{j}")
 
 
-def f_deep_fake(rng: random.Random) -> Case:
-    i, sentence = pick(rng, DEEP_FAKES)
+def f_deep_fake(rng: random.Random, pool=None, tag: str = "") -> Case:
+    i, sentence = pick(rng, pool or DEEP_FAKES)
     j, actor = pick(rng, PRIVATE[6:] + GENERIC + ("una productora audiovisual",))
     profile = {"generates_synthetic_content": True, "deep_fake": True}
-    return Case(profile, [sentence], actor, f"df{i}-o{j}")
+    return Case(profile, [sentence], actor, f"{tag}df{i}-o{j}")
 
 
-def f_public_text(rng: random.Random) -> Case:
-    i, sentence = pick(rng, PUBLIC_TEXT)
+def f_public_text(rng: random.Random, pool=None, tag: str = "") -> Case:
+    i, sentence = pick(rng, pool or PUBLIC_TEXT)
     j, actor = pick(rng, MEDIA)
     profile = {"generates_synthetic_content": True, "public_interest_text_without_review": True}
-    return Case(profile, [sentence], actor, f"pt{i}-o{j}")
+    return Case(profile, [sentence], actor, f"{tag}pt{i}-o{j}")
 
 
 def f_biometric_plain(rng: random.Random) -> Case:
@@ -1170,16 +1231,16 @@ EXCEPTIONS_MINIMAL = (
 )
 
 
-def f_plain(rng: random.Random) -> Case:
-    i, sentence = pick(rng, PLAIN)
+def f_plain(rng: random.Random, pool=None, tag: str = "") -> Case:
+    i, sentence = pick(rng, pool or PLAIN)
     j, actor = pick(rng, PRIVATE)
-    return Case({}, [sentence], actor, f"pl{i}-o{j}")
+    return Case({}, [sentence], actor, f"{tag}pl{i}-o{j}")
 
 
-def f_exception(rng: random.Random) -> Case:
-    i, (actors, sentence, profile) = pick(rng, EXCEPTIONS_MINIMAL)
+def f_exception(rng: random.Random, pool=None, tag: str = "") -> Case:
+    i, (actors, sentence, profile) = pick(rng, pool or EXCEPTIONS_MINIMAL)
     j, actor = pick(rng, actors)
-    return Case(dict(profile), [sentence], actor, f"ex{i}-o{j}")
+    return Case(dict(profile), [sentence], actor, f"{tag}ex{i}-o{j}")
 
 
 # ---------------------------------------------------------------------------- OOD (education)
@@ -1208,16 +1269,22 @@ TUTOR_CHATBOT = (
 )
 
 
+# OOD and test share the profiling and chatbot add-ons written for the test (defined below),
+# so no sentence that decides the label is shared with train.
 def f_ood_annex_iii(rng):
-    return _annex_iii_case(rng, OOD_CODES)
+    return _annex_iii_case(rng, OOD_CODES, chatbot_addon=CHATBOT_ADDON_T)
 
 
 def f_ood_derogation(rng):
-    return _derogation_case(rng, DEROGATION_OOD, profiling=False, chatbot=False)
+    return _derogation_case(
+        rng, DEROGATION_OOD, profiling=False, chatbot=False, profiling_text=PROFILING_TEXT_T
+    )
 
 
 def f_ood_derogation_profiling(rng):
-    return _derogation_case(rng, DEROGATION_OOD, profiling=True, chatbot=False)
+    return _derogation_case(
+        rng, DEROGATION_OOD, profiling=True, chatbot=False, profiling_text=PROFILING_TEXT_T
+    )
 
 
 def f_ood_emotion_classroom(rng: random.Random) -> Case:
@@ -1266,6 +1333,741 @@ def f_ood_plain(rng: random.Random) -> Case:
     return Case({}, [sentence], actor, f"op{i}-o{j}")
 
 
+# ---------------------------------------------------------------------------- held-out test wording
+
+# The in-distribution test keeps train's families, labels and articles, but every sentence that
+# carries a legal fact is written here and used nowhere else: the scenarios, the wording and the
+# filler sentences are new. Until 2026-11 the test drew from the train pools and 193/200 cases
+# reused train's case sentences (see the data audit in docs/EXPERIMENTS.md), so it measured recall
+# of seen cases rather than classification of new ones. Train is unchanged: the models were
+# trained on it. Sentences avoid participles that agree with the subject (``la herramienta``…).
+
+MANIPULATION_T = (
+    (
+        "incrusta en los vídeos de la plataforma mensajes subliminales que el espectador no "
+        "percibe de forma consciente para que contrate suscripciones de pago.",
+        "Muchos usuarios pagan suscripciones que no querían y algunos acumulan cargos que no "
+        "pueden asumir.",
+    ),
+    (
+        "envía avisos con cuentas atrás falsas y oculta el precio final hasta el último paso para "
+        "forzar la reserva de viajes.",
+        "Los clientes reservan viajes que no habrían reservado conociendo el precio real y pierden "
+        "dinero que no pueden recuperar.",
+    ),
+    (
+        "emplea en las máquinas de juego sonidos y vibraciones por debajo del umbral de la "
+        "conciencia para alargar las sesiones de juego.",
+        "Los jugadores pasan horas jugando sin darse cuenta y varios han perdido cantidades "
+        "importantes.",
+    ),
+    (
+        "imita la voz de un familiar del usuario para convencerle con engaños de que contrate un "
+        "plan de pensiones muy caro.",
+        "Los afectados trasladan sus ahorros a un producto que no habrían elegido y sufren "
+        "pérdidas graves.",
+    ),
+    (
+        "muestra opiniones inventadas y alertas falsas de existencias agotadas para que los "
+        "clientes compren suplementos dietéticos en grandes cantidades.",
+        "Los clientes compran y toman más suplementos de los recomendados y algunos han necesitado "
+        "atención médica.",
+    ),
+)
+
+VULNERABILITY_T = (
+    (
+        ("una empresa de aplicaciones infantiles", "un estudio de juegos para niños") + GENERIC,
+        "es una aplicación para niños de seis a diez años que los convence para compartir fotos y "
+        "datos de sus padres a cambio de premios virtuales.",
+        "Los niños entregan información familiar que no darían por sí mismos y varias familias han "
+        "sufrido fraudes.",
+    ),
+    (
+        ("una empresa de microcréditos", "una plataforma de préstamos entre particulares")
+        + GENERIC,
+        "localiza a personas en paro de larga duración y les ofrece créditos con intereses "
+        "abusivos cuando reciben un aviso de desahucio.",
+        "Muchas aceptan préstamos que no habrían firmado y su situación económica empeora "
+        "gravemente.",
+    ),
+    (
+        ("una red de residencias de mayores", "una empresa de servicios a domicilio") + GENERIC,
+        "aprovecha la pérdida de memoria de los residentes de más edad para que firmen la compra "
+        "de servicios adicionales.",
+        "Los residentes contratan servicios que no necesitan y sus pensiones se resienten de forma "
+        "grave.",
+    ),
+    (
+        ("una tienda online de productos de salud", "una parafarmacia online"),
+        "detecta por su historial de búsqueda a usuarios con trastornos alimentarios y les insiste "
+        "para que compren productos adelgazantes.",
+        "Estas personas compran y consumen productos que agravan su trastorno y varias han tenido "
+        "que ser hospitalizadas.",
+    ),
+)
+
+SOCIAL_SCORING_T = (
+    (
+        PUBLIC,
+        "otorga a cada familia una nota de «civismo» según sus compras, sus amistades en redes "
+        "sociales y su asistencia a actos públicos.",
+        "Las familias con nota baja pierden el acceso a las instalaciones deportivas municipales, "
+        "algo que no tiene relación con esos datos.",
+    ),
+    (
+        ("una compañía eléctrica", "una operadora de telecomunicaciones") + GENERIC[:3],
+        "clasifica a los clientes según su vida familiar y las opiniones que han publicado en "
+        "internet a lo largo de los años.",
+        "A los peor clasificados se les exige una fianza muy superior para contratar la luz o el "
+        "teléfono, aunque siempre hayan pagado sus facturas.",
+    ),
+    (
+        ("una comunidad de propietarios", "una gestora de fincas"),
+        "puntúa a cada vecino por su comportamiento social en las zonas comunes y en los grupos de "
+        "mensajería del edificio, registrado durante años.",
+        "Con una puntuación baja se le impide usar el garaje y la piscina durante un año, una "
+        "sanción desproporcionada respecto a lo que hizo.",
+    ),
+    (
+        PUBLIC,
+        "calcula la «fiabilidad» de cada residente combinando sus multas, sus deudas con otras "
+        "administraciones y lo que publica en redes sociales.",
+        "Los residentes con peor puntuación pasan al final de las listas de vivienda protegida, "
+        "sin relación con su necesidad.",
+    ),
+)
+
+CRIME_PROFILING_T = (
+    (
+        POLICE,
+        "predice qué vecinos de un distrito cometerán robos en los próximos meses usando solo su "
+        "origen, su nivel de estudios y rasgos de carácter deducidos de sus redes sociales.",
+        True,
+    ),
+    (
+        ("una cadena de gasolineras", "una red de tiendas de conveniencia"),
+        "marca a cada cliente como posible ladrón según su perfil de personalidad y su aspecto, "
+        "sin ningún hecho que lo vincule con un robo.",
+        False,
+    ),
+    (
+        ("un operador de aparcamientos", "una empresa de seguridad privada"),
+        "estima qué conductores cometerán actos vandálicos según rasgos psicológicos inferidos de "
+        "su forma de hablar, sin ningún dato objetivo sobre su conducta.",
+        False,
+    ),
+    (
+        POLICE,
+        "asigna a cada persona que renueva su documento de identidad una probabilidad de cometer "
+        "un delito basada únicamente en su perfil psicológico, sin ninguna investigación abierta.",
+        True,
+    ),
+)
+
+FACE_SCRAPING_T = (
+    "recoge de forma automática e indiscriminada las fotos de perfil de foros y webs de citas "
+    "para alimentar una base de datos de reconocimiento facial.",
+    "descarga sin ningún criterio todos los fotogramas con caras de vídeos públicos de internet "
+    "para ampliar un sistema de reconocimiento facial.",
+    "captura de forma masiva las caras que graban las cámaras de los aparcamientos de la ciudad "
+    "para crear una base de datos de reconocimiento facial.",
+)
+
+EMOTION_WORK_T = (
+    "estudia la expresión de los cajeros a lo largo de la jornada para medir su grado de "
+    "satisfacción y lo tiene en cuenta en su evaluación.",
+    "analiza el tono de los mensajes de voz de los empleados para deducir si están desmotivados o "
+    "tristes y avisa a recursos humanos.",
+    "mide por la mirada y los gestos el aburrimiento de los empleados de oficina durante las "
+    "reuniones.",
+    "infiere por la voz de los camareros si están de mal humor durante el servicio y prepara un "
+    "informe semanal para la dirección.",
+)
+
+BIOMETRIC_SENSITIVE_T = (
+    "deduce la religión de los clientes a partir de las fotografías de su rostro tomadas en la "
+    "entrada.",
+    "infiere si los usuarios son homosexuales analizando los rasgos de su cara en los vídeos que "
+    "suben.",
+    "clasifica a los visitantes por su supuesta raza a partir de su imagen facial para segmentar "
+    "la publicidad.",
+    "estima la afinidad política de cada aspirante a partir de la fotografía de su carné.",
+)
+
+RBI_T = {
+    "first": "{{Sys}} identifica en directo, por su cara, a las personas que pasan {place}",
+    "places": (
+        "por un centro comercial abierto al público",
+        "por el paseo marítimo",
+        "por las paradas del metro",
+        "por un mercado municipal",
+    ),
+    "no_objective": (
+        "para reconocer a quienes participan en una concentración vecinal",
+        "para detectar a personas con infracciones administrativas leves",
+        "para localizar a quienes deben multas de aparcamiento",
+    ),
+    "objectives": (
+        ("victim_search", "para encontrar a una persona desaparecida que podría estar secuestrada"),
+        ("victim_search", "para dar con víctimas de explotación sexual"),
+        ("imminent_threat", "ante un aviso concreto de atentado inminente en esa zona"),
+        ("serious_crime_suspect", "para localizar al sospechoso de un secuestro"),
+    ),
+    "auth": (
+        "Un juez lo ha autorizado de antemano.",
+        "Al tratarse de una urgencia, empieza a usarse ya y la autorización del juez se pide en "
+        "las 24 horas siguientes.",
+    ),
+    "no_auth": "No tiene ninguna autorización de un juez ni de una autoridad administrativa.",
+}
+
+ANNEX_III_T: dict[str, dict[str, Any]] = {
+    "2.a": {
+        "uses": (
+            (
+                ("una empresa de calefacción urbana",),
+                "{Sys} es un componente de seguridad de la red de calefacción del barrio: regula "
+                "la temperatura y la presión para evitar explosiones.",
+            ),
+            (
+                ("una distribuidora eléctrica",),
+                "{Sys} decide qué líneas de alta tensión se aíslan cuando detecta una sobrecarga, "
+                "como parte de la seguridad de la red.",
+            ),
+            (
+                ("la dirección de tráfico de una comunidad autónoma",),
+                "{Sys} cierra carriles y limita la velocidad en una autovía de forma automática "
+                "como componente de seguridad del tráfico.",
+            ),
+            (
+                ("una empresa municipal de aguas",),
+                "{Sys} detecta contaminación en la red de agua potable y cierra las tomas "
+                "afectadas como componente de seguridad del suministro.",
+            ),
+        )
+    },
+    "4.a": {
+        "uses": (
+            (
+                EMPLOYERS,
+                "{Sys} lee las cartas de presentación y elimina automáticamente a los aspirantes "
+                "que considera poco adecuados.",
+            ),
+            (
+                EMPLOYERS,
+                "{Sys} analiza los vídeos de presentación de los aspirantes y elige a quiénes se "
+                "entrevista.",
+            ),
+            (
+                EMPLOYERS,
+                "{Sys} selecciona a qué usuarios de una red profesional se les anuncia una vacante "
+                "según su perfil.",
+            ),
+        ),
+        "context": "Dentro de la contratación de nuevos empleados,",
+        "human": "la persona responsable de selección",
+        "narrow": "detectar los currículums duplicados y fusionarlos",
+        "improved": "las cartas de rechazo",
+        "decisions": "las decisiones de selección",
+        "prep": "anonimiza y estructura las candidaturas",
+    },
+    "4.b": {
+        "uses": (
+            (
+                ("una plataforma de transporte con conductor",),
+                "{Sys} decide qué conductores pueden seguir trabajando en la plataforma según sus "
+                "valoraciones y su conducta.",
+            ),
+            (
+                EMPLOYERS,
+                "{Sys} fija el bonus anual de cada trabajador a partir de su comportamiento "
+                "registrado.",
+            ),
+            (
+                EMPLOYERS,
+                "{Sys} supervisa la actividad de los empleados en el ordenador y propone "
+                "sanciones disciplinarias.",
+            ),
+        ),
+        "context": "En la administración de la plantilla,",
+        "human": "la dirección del departamento",
+        "narrow": "avisar de los fichajes que faltan en el registro horario",
+        "improved": "los informes anuales de desempeño",
+        "decisions": "las decisiones sobre ascensos",
+        "prep": "agrega los datos de productividad de cada equipo",
+    },
+    "5.a": {
+        "uses": (
+            (
+                PUBLIC,
+                "{Sys} valora las solicitudes del bono social de vivienda y decide quién lo "
+                "recibe.",
+            ),
+            (
+                PUBLIC,
+                "{Sys} revisa a quienes cobran una pensión no contributiva y decide si se les "
+                "suspende el pago.",
+            ),
+            (
+                PUBLIC,
+                "{Sys} decide qué personas dependientes reciben antes la ayuda a domicilio.",
+            ),
+        ),
+        "context": "En la gestión de ayudas públicas,",
+        "human": "el trabajador social",
+        "narrow": "verificar que los formularios llevan firma y fecha",
+        "improved": "las notificaciones de resolución",
+        "decisions": "las concesiones de ayudas",
+        "prep": "extrae los datos de los certificados de empadronamiento",
+    },
+    "5.b": {
+        "uses": (
+            (
+                BANKS,
+                "{Sys} decide si se aprueba la financiación de un coche a cada particular según su "
+                "capacidad de pago.",
+            ),
+            (
+                BANKS,
+                "{Sys} asigna una nota de solvencia a las personas que piden un microcrédito.",
+            ),
+            (
+                BANKS,
+                "{Sys} analiza los movimientos bancarios de cada solicitante para decidir si se le "
+                "concede un préstamo rápido.",
+            ),
+        ),
+        "context": "En el estudio de solicitudes de préstamo,",
+        "human": "el gestor de riesgos",
+        "narrow": "comprobar que el documento de identidad del solicitante no ha caducado",
+        "improved": "los dictámenes de solvencia",
+        "decisions": "las aprobaciones de préstamos",
+        "prep": "ordena los justificantes de ingresos",
+    },
+    "5.c": {
+        "uses": (
+            (
+                INSURERS,
+                "{Sys} decide si se acepta a cada persona que pide un seguro de vida según su "
+                "historial médico.",
+            ),
+            (
+                INSURERS,
+                "{Sys} calcula cuánto paga cada asegurado por su póliza de salud a partir de sus "
+                "datos de actividad física.",
+            ),
+        ),
+        "context": "En la suscripción de pólizas de vida y salud,",
+        "human": "el técnico de suscripción",
+        "narrow": "detectar los cuestionarios médicos con casillas en blanco",
+        "improved": "las cartas de condiciones",
+        "decisions": "las decisiones de aceptación",
+        "prep": "digitaliza los informes médicos",
+    },
+    "5.d": {
+        "uses": (
+            (
+                ("un centro coordinador de urgencias",),
+                "{Sys} decide en qué orden se atienden las llamadas al servicio de emergencias "
+                "médicas.",
+            ),
+            (
+                ("un hospital comarcal",),
+                "{Sys} asigna el nivel de prioridad de cada paciente que llega al servicio de "
+                "urgencias.",
+            ),
+            (
+                ("un servicio de protección civil",),
+                "{Sys} decide a qué avisos se envían primero los equipos de rescate.",
+            ),
+        )
+    },
+    "6.a": {
+        "uses": (
+            (
+                POLICE,
+                "{Sys} calcula el riesgo de que una persona que ha denunciado acoso sufra una "
+                "nueva agresión.",
+            ),
+            (
+                POLICE,
+                "{Sys} estima qué menores tienen más probabilidad de ser víctimas de captación por "
+                "redes delictivas.",
+            ),
+        )
+    },
+    "6.b": {
+        "uses": (
+            (
+                POLICE,
+                "{Sys} analiza la voz y los gestos de los detenidos durante la declaración para "
+                "detectar si mienten.",
+            ),
+            (
+                POLICE,
+                "{Sys} mide las reacciones fisiológicas de los sospechosos en las entrevistas "
+                "policiales como un detector de mentiras.",
+            ),
+        )
+    },
+    "6.c": {
+        "uses": (
+            (
+                POLICE,
+                "{Sys} valora qué pruebas de un sumario son fiables y cuáles se deben descartar.",
+            ),
+            (
+                POLICE,
+                "{Sys} estima si las grabaciones aportadas a una investigación penal son "
+                "auténticas y fiables.",
+            ),
+        )
+    },
+    "6.e": {
+        "uses": (
+            (
+                POLICE,
+                "{Sys} crea perfiles de las personas investigadas para orientar a los agentes "
+                "durante la investigación.",
+            ),
+            (
+                POLICE,
+                "{Sys} construye perfiles de los posibles autores de una serie de robos a partir "
+                "de los datos del caso.",
+            ),
+        )
+    },
+    "7.a": {
+        "uses": (
+            (
+                BORDER,
+                "{Sys} analiza las respuestas y los gestos de quienes piden entrar en el país para "
+                "detectar si mienten.",
+            ),
+        )
+    },
+    "7.b": {
+        "uses": (
+            (
+                BORDER,
+                "{Sys} calcula qué pasajeros que llegan suponen un riesgo sanitario o para la "
+                "seguridad.",
+            ),
+            (
+                BORDER,
+                "{Sys} decide qué viajeros pasan a una segunda inspección según el riesgo de "
+                "migración irregular que les atribuye.",
+            ),
+        )
+    },
+    "7.c": {
+        "uses": (
+            (
+                BORDER,
+                "{Sys} examina las solicitudes de protección internacional y recomienda si se "
+                "conceden.",
+            ),
+            (
+                BORDER,
+                "{Sys} estudia las peticiones de residencia por reagrupación familiar y propone "
+                "cuáles se rechazan.",
+            ),
+        ),
+        "context": "En el examen de solicitudes de residencia y protección internacional,",
+        "human": "el funcionario encargado",
+        "narrow": "verificar que las fotografías del expediente tienen el tamaño exigido",
+        "improved": "los informes de instrucción",
+        "decisions": "las resoluciones de los expedientes",
+        "prep": "transcribe las entrevistas grabadas",
+    },
+    "7.d": {
+        "uses": (
+            (
+                BORDER,
+                "{Sys} identifica a las personas migrantes que llegan a la costa comparando sus "
+                "fotos con registros anteriores.",
+            ),
+        )
+    },
+    "8.a": {
+        "uses": (
+            (
+                JUSTICE,
+                "{Sys} estudia la jurisprudencia y los hechos de cada caso y redacta una propuesta "
+                "de sentencia para el juez.",
+            ),
+            (
+                JUSTICE,
+                "{Sys} propone a los mediadores una solución para cada conflicto según los hechos "
+                "y la normativa aplicable.",
+            ),
+        ),
+        "context": "En la gestión de los expedientes judiciales,",
+        "human": "el tribunal",
+        "narrow": "asignar a cada escrito su número de registro",
+        "improved": "los autos",
+        "decisions": "las sentencias",
+        "prep": "resume los escritos de las partes",
+    },
+    "8.b": {
+        "uses": (
+            (
+                ("una agencia de campañas electorales", "una consultora política"),
+                "{Sys} diseña un anuncio distinto para cada votante según su perfil con el "
+                "objetivo de cambiar su voto.",
+            ),
+            (
+                ("un partido político",),
+                "{Sys} identifica a los votantes indecisos de cada barrio y les envía mensajes "
+                "pensados para inclinar su voto.",
+            ),
+        )
+    },
+}
+
+DEROGATION_TEXTS_T = {
+    "narrow_procedural_task": "{context} la única tarea de {sys} es {narrow}; no evalúa a nadie "
+    "y la decisión la toma {human}.",
+    "improves_prior_human_activity": "{context} {sys} únicamente pule el estilo de {improved} que "
+    "{human} ya ha terminado, sin alterar lo que dicen ni su conclusión.",
+    "detects_decision_patterns": "{context} {sys} analiza, una vez tomadas, {decisions} de "
+    "{human} para detectar desviaciones respecto a su práctica habitual; no reemplaza ni cambia "
+    "ninguna decisión sin que la revise una persona.",
+    "preparatory_task": "{context} {sys} {prep} como paso previo a la evaluación de {human}, que "
+    "es quien decide.",
+}
+PROFILING_TEXT_T = (
+    "Además, {sys} construye un perfil de cada persona afectada que predice su conducta futura y "
+    "sus rasgos personales."
+)
+CHATBOT_ADDON_T = (
+    "Por otro lado, {sys} conversa por chat con las personas afectadas sin advertirles de que "
+    "hablan con una IA."
+)
+
+BIOMETRIC_HIGH_T = (
+    (
+        PRIVATE[3:6] + ("un parque de atracciones",),
+        "{Sys} reconoce a distancia a los visitantes comparando su cara con un registro de "
+        "personas, sin que tengan que detenerse.",
+        {"remote_biometric_identification": True},
+    ),
+    (
+        POLICE,
+        "{Sys} revisa vídeos grabados días antes para encontrar a personas buscadas comparando sus "
+        "caras con una base de datos policial.",
+        {**RBI_BASE, "real_time": False},
+    ),
+    (
+        ("un parque de atracciones", "una cadena de cines", "un centro comercial"),
+        "{Sys} deduce por la expresión de la cara las emociones de los visitantes ante cada "
+        "atracción.",
+        {"emotion_recognition": True},
+    ),
+    (
+        ("una central nuclear", "una empresa ferroviaria", "una naviera"),
+        "{Sys} detecta en la cara de los maquinistas signos de miedo intenso o de angustia, solo "
+        "para proteger la seguridad de la operación.",
+        {
+            "emotion_recognition": True,
+            "workplace_or_education": True,
+            "medical_or_safety_purpose": True,
+        },
+    ),
+    (
+        ("una estación de autobuses", "un estadio", "una cadena de supermercados"),
+        "{Sys} estima la edad y el sexo de las personas a partir de las imágenes de su rostro.",
+        {"biometric_categorisation": True, "infers_protected_attributes": True},
+    ),
+    (
+        POLICE,
+        "{Sys} etiqueta por religión imágenes biométricas obtenidas de forma lícita durante una "
+        "investigación policial.",
+        {
+            "biometric_categorisation": True,
+            "infers_sensitive_attributes": True,
+            "dataset_labelling_or_law_enforcement": True,
+        },
+    ),
+)
+
+ANNEX_I_HIGH_T = (
+    (
+        "medical_devices",
+        ("un fabricante de dispositivos de diagnóstico", "una empresa de tecnología sanitaria"),
+        "{Sys} detecta arritmias en electrocardiogramas y se vende como producto sanitario sujeto "
+        "a la evaluación de conformidad de un organismo notificado.",
+    ),
+    (
+        "machinery",
+        ("un fabricante de prensas industriales",),
+        "{Sys} actúa como componente de seguridad que para una prensa hidráulica si una mano entra "
+        "en la zona de peligro, y la máquina necesita la evaluación de un organismo notificado.",
+    ),
+    (
+        "lifts",
+        ("una empresa de ascensores",),
+        "{Sys} forma parte del sistema de seguridad de un ascensor y detiene la cabina ante un "
+        "fallo de los cables; un organismo notificado certifica ese sistema.",
+    ),
+    (
+        "toys",
+        ("un fabricante de juguetes",),
+        "{Sys} forma parte de un peluche conectado y vela por que funcione de forma segura; un "
+        "organismo notificado debe examinar el juguete.",
+    ),
+    (
+        "motor_vehicles",
+        ("un fabricante de motocicletas", "un fabricante de automóviles"),
+        "{Sys} controla el sistema de mantenimiento de carril de un vehículo, que requiere la "
+        "homologación de tipo de una autoridad independiente.",
+    ),
+    (
+        "civil_aviation",
+        ("un fabricante de aviones ligeros",),
+        "{Sys} gestiona el aterrizaje automático de una aeronave, que debe certificar la autoridad "
+        "de aviación civil.",
+    ),
+)
+
+POLICE_RECIDIVISM_T = (
+    "{Sys} calcula, para los agentes que investigan un caso, el riesgo de que el detenido "
+    "reincida a partir de sus condenas anteriores y de las pruebas reunidas.",
+    "{Sys} ayuda a la policía a estimar si una persona investigada por hechos comprobados volverá "
+    "a delinquir, usando su historial y los datos del caso.",
+    "{Sys} valora la probabilidad de reincidencia de los investigados combinando su trayectoria "
+    "delictiva con hechos verificables de la investigación.",
+)
+
+CHATBOTS_T = (
+    "{Sys} es un asistente por chat que ayuda a los clientes a cambiar de tarifa y a resolver "
+    "incidencias.",
+    "{Sys} contesta por teléfono, con voz natural, a quienes llaman para preguntar por su envío.",
+    "{Sys} conversa con los usuarios en la aplicación móvil para recomendarles servicios.",
+    "{Sys} atiende por correo y por chat las reclamaciones de los clientes.",
+)
+SYNTHETIC_T = (
+    "{Sys} crea los banners publicitarios de la web a partir de una breve descripción.",
+    "{Sys} redacta automáticamente los boletines que se envían a los clientes.",
+    "{Sys} genera las fotos de modelos que aparecen en la tienda online.",
+    "{Sys} produce las locuciones de los vídeos tutoriales con una voz artificial.",
+    "{Sys} genera bandas sonoras para los anuncios de la marca.",
+)
+DEEP_FAKES_T = (
+    "{Sys} produce vídeos en los que un presentador de televisión real anuncia productos que "
+    "nunca ha anunciado.",
+    "{Sys} recrea la voz de un cantante conocido para que parezca que interpreta canciones que "
+    "nunca ha cantado.",
+    "{Sys} genera fotografías realistas de personas reales en situaciones que nunca ocurrieron, "
+    "para una campaña de marketing.",
+    "{Sys} fabrica vídeos verosímiles de un edificio real envuelto en llamas para promocionar una "
+    "película.",
+)
+PUBLIC_TEXT_T = (
+    "{Sys} escribe y publica al momento noticias sobre las elecciones municipales sin que un "
+    "redactor las revise.",
+    "{Sys} genera y difunde informaciones sobre la situación económica del país sin control "
+    "editorial de ninguna persona.",
+    "{Sys} redacta y publica crónicas sobre las decisiones del Gobierno sin revisión humana.",
+)
+BIOMETRIC_PLAIN_T = (
+    "{Sys} agrupa a los clientes por rasgos físicos visibles, como el color del pelo o la "
+    "estatura, a partir de las cámaras, para analizar el tráfico en la tienda.",
+    "{Sys} reparte a los visitantes en grupos según rasgos de la cara como el bigote o las pecas "
+    "para estudiar los flujos de entrada.",
+)
+
+PLAIN_T = (
+    "{Sys} traduce automáticamente los manuales internos de la empresa.",
+    "{Sys} clasifica por tema las incidencias técnicas que llegan al servicio de soporte.",
+    "{Sys} calcula el mejor momento para regar los jardines de las instalaciones.",
+    "{Sys} sugiere canciones a los clientes de una plataforma de música según sus gustos.",
+    "{Sys} detecta arañazos en las carrocerías al final de la cadena de montaje.",
+    "{Sys} estima el consumo eléctrico de los edificios de la empresa para la semana siguiente.",
+    "{Sys} ordena los resultados del buscador interno de documentos.",
+    "{Sys} propone dónde colocar cada producto en las estanterías del almacén.",
+)
+
+EXCEPTIONS_MINIMAL_T = (
+    (
+        BANKS,
+        "{Sys} solo sirve para descubrir transferencias fraudulentas en la banca online; nunca se "
+        "emplea para valorar la solvencia de los clientes ni para decidir créditos.",
+        {"annex_iii_use_cases": ["5.b"], "fraud_detection_only": True},
+    ),
+    (
+        BORDER,
+        "{Sys} se limita a comprobar que los visados y pasaportes presentados en el control no son "
+        "falsos.",
+        {"annex_iii_use_cases": ["7.d"], "travel_document_verification_only": True},
+    ),
+    (
+        ("un partido político", "una consultora política"),
+        "{Sys} planifica la agenda de mítines y el reparto de carteles de la campaña, sin "
+        "dirigirse en ningún momento a los electores.",
+        {"annex_iii_use_cases": ["8.b"], "campaign_logistics_only": True},
+    ),
+    (
+        EMPLOYERS,
+        "{Sys} permite fichar a cada trabajador comprobando que su cara coincide con la fotografía "
+        "que se le tomó al darle de alta, únicamente para confirmar su identidad.",
+        {"remote_biometric_identification": True, "biometric_verification": True},
+    ),
+    (
+        ("un fabricante de maquinaria de envasado",),
+        "{Sys} regula la potencia de una máquina empaquetadora cuya conformidad evalúa el propio "
+        "fabricante, sin que intervenga ningún organismo notificado.",
+        {"annex_i_product": "machinery"},
+    ),
+    (
+        PRIVATE,
+        "{Sys} sugiere correcciones gramaticales en los correos que redacta la plantilla, sin "
+        "modificar lo que dicen.",
+        {"generates_synthetic_content": True, "assistive_editing_only": True},
+    ),
+)
+
+
+def f_biometric_plain_test(rng: random.Random) -> Case:
+    i, sentence = pick(rng, BIOMETRIC_PLAIN_T)
+    j, actor = pick(rng, PRIVATE[:3] + GENERIC + ("un centro comercial",))
+    return Case({"biometric_categorisation": True}, [sentence], actor, f"tbp{i}-o{j}")
+
+
+def _t(family: Callable[..., Case], **kwargs: Any) -> Family:
+    """A train family drawing from the held-out pools; scenario ids get a ``t`` prefix."""
+    return partial(family, tag="t", **kwargs)
+
+
+T_ANNEX = {
+    "cases": ANNEX_III_T,
+    "chatbot_addon": CHATBOT_ADDON_T,
+    "tag": "t",
+}
+T_DEROGATION = {
+    **T_ANNEX,
+    "texts": DEROGATION_TEXTS_T,
+    "profiling_text": PROFILING_TEXT_T,
+}
+
+
+def f_annex_iii_test(rng):
+    return _annex_iii_case(rng, TRAIN_CODES, **T_ANNEX)
+
+
+def f_derogation_profiling_test(rng):
+    return _derogation_case(rng, DEROGATION_TRAIN, profiling=True, chatbot=False, **T_DEROGATION)
+
+
+def f_derogation_test(rng):
+    return _derogation_case(rng, DEROGATION_TRAIN, profiling=False, chatbot=False, **T_DEROGATION)
+
+
+def f_derogation_chatbot_test(rng):
+    return _derogation_case(rng, DEROGATION_TRAIN, profiling=False, chatbot=True, **T_DEROGATION)
+
+
 # ---------------------------------------------------------------------------- registry
 
 FAMILIES: dict[str, dict[str, tuple[str, Family]]] = {
@@ -1305,7 +2107,31 @@ FAMILIES: dict[str, dict[str, tuple[str, Family]]] = {
         "ood_plain": (MINIMAL, f_ood_plain),
     },
 }
-FAMILIES["test"] = FAMILIES["train"]
+FAMILIES["test"] = {
+    "manipulation": (PROHIBITED, _t(f_manipulation, pool=MANIPULATION_T)),
+    "vulnerability": (PROHIBITED, _t(f_vulnerability, pool=VULNERABILITY_T)),
+    "social_scoring": (PROHIBITED, _t(f_social_scoring, pool=SOCIAL_SCORING_T)),
+    "crime_profiling": (PROHIBITED, _t(f_crime_profiling, pool=CRIME_PROFILING_T)),
+    "face_scraping": (PROHIBITED, _t(f_face_scraping, pool=FACE_SCRAPING_T)),
+    "emotion_work": (PROHIBITED, _t(f_emotion_work, pool=EMOTION_WORK_T)),
+    "biometric_sensitive": (PROHIBITED, _t(f_biometric_sensitive, pool=BIOMETRIC_SENSITIVE_T)),
+    "police_rbi_prohibited": (PROHIBITED, _t(f_police_rbi_prohibited, rbi=RBI_T)),
+    "annex_iii": (HIGH_RISK, f_annex_iii_test),
+    "derogation_profiling": (HIGH_RISK, f_derogation_profiling_test),
+    "biometric_high": (HIGH_RISK, _t(f_biometric_high, pool=BIOMETRIC_HIGH_T)),
+    "police_rbi_authorised": (HIGH_RISK, _t(f_police_rbi_authorised, rbi=RBI_T)),
+    "annex_i": (HIGH_RISK, _t(f_annex_i, pool=ANNEX_I_HIGH_T)),
+    "police_recidivism": (HIGH_RISK, _t(f_police_recidivism, pool=POLICE_RECIDIVISM_T)),
+    "chatbot": (LIMITED, _t(f_chatbot, pool=CHATBOTS_T)),
+    "synthetic": (LIMITED, _t(f_synthetic, pool=SYNTHETIC_T)),
+    "deep_fake": (LIMITED, _t(f_deep_fake, pool=DEEP_FAKES_T)),
+    "public_text": (LIMITED, _t(f_public_text, pool=PUBLIC_TEXT_T)),
+    "biometric_plain": (LIMITED, f_biometric_plain_test),
+    "derogation_chatbot": (LIMITED, f_derogation_chatbot_test),
+    "plain": (MINIMAL, _t(f_plain, pool=PLAIN_T)),
+    "exception": (MINIMAL, _t(f_exception, pool=EXCEPTIONS_MINIMAL_T)),
+    "derogation": (MINIMAL, f_derogation_test),
+}
 
 # Within a label, how often each family is drawn. Families not listed weigh 1.
 FAMILY_WEIGHTS = {
@@ -1364,13 +2190,24 @@ class AIActGenerator(ProblemGenerator):
             # surface choices: they change the wording, not the case
             "subject": rng.randrange(len(SUBJECTS)),
             "frame": rng.randrange(len(FRAMES)),
-            "distractors": rng.sample(range(len(DISTRACTORS)), k=rng.choice([0, 1, 1, 2])),
+            "distractors": rng.sample(range(len(FILLERS[split])), k=rng.choice([0, 1, 1, 2])),
+            "fillers": split,
         }
 
     def key(self, params: dict[str, Any]) -> str:
         """Semantic key: same family, profile, scenario and organisation = same case."""
         semantic = {k: params[k] for k in ("family", "profile", "scenario", "actor")}
         return json.dumps(semantic, sort_keys=True, ensure_ascii=False)
+
+    @staticmethod
+    def case_text(params: dict[str, Any]) -> str:
+        """What a reader would see as the case: the fact sentences and the organisation.
+
+        Two different keys can render the same text (in ``_derogation_case`` the use index is in
+        the scenario id but only selects the organisation list), so test and OOD also dedup on
+        this.
+        """
+        return json.dumps([params["sentences"], params["actor"]], ensure_ascii=False)
 
     def solve(self, params: dict[str, Any]) -> tuple[str, dict[str, str]]:
         result = classify(params["profile"])
@@ -1390,25 +2227,34 @@ class AIActGenerator(ProblemGenerator):
         """The description alone (no frame, no instruction): what the leak check inspects."""
         subject = SUBJECTS[params["subject"]]
         parts = [_fill(s, subject) for s in params["sentences"]]
-        parts += [DISTRACTORS[i] for i in params["distractors"]]
+        parts += [FILLERS[params["fillers"]][i] for i in params["distractors"]]
         return " ".join(parts)
 
     def render(self, params: dict[str, Any], rng: random.Random) -> tuple[str, int]:
         desc = self.describe_case(params)
-        frame = FRAMES[params["frame"]]
+        frame = FRAMES_BY_SPLIT[params["fillers"]][params["frame"]]
         text = frame.format(actor=params["actor"], Actor=_capitalise(params["actor"]), desc=desc)
         return f"{text}\n\n{INSTRUCTION}", params["frame"]
 
     def generate(
-        self, n: int, split: str, seed: int = 0, exclude: set[str] | None = None
+        self,
+        n: int,
+        split: str,
+        seed: int = 0,
+        exclude: set[str] | None = None,
+        exclude_texts: set[str] | None = None,
     ) -> list[AIActProblem]:
         """Like the base class, with two changes.
 
         * Exact quotas per label (n/4 each), so exhausted families cannot skew the classes.
         * Keys in ``exclude`` (the keys of earlier splits) are never generated again.
+        * Outside train, a case whose text (``case_text``) is in ``exclude_texts`` or already in
+          the split is skipped too. Train is left as it was generated, with 7 such repeats,
+          because the models were trained on it.
         """
         rng = random.Random(f"{seed}-{split}")
         seen: set[str] = set(exclude or ())
+        seen_texts: set[str] = set(exclude_texts or ())
         quota = {label: n // len(LABELS) + (i < n % len(LABELS)) for i, label in enumerate(LABELS)}
         problems: list[AIActProblem] = []
         attempts = 0
@@ -1419,7 +2265,11 @@ class AIActGenerator(ProblemGenerator):
             fingerprint = self.key(params)
             if fingerprint in seen:
                 continue
+            text = self.case_text(params)
+            if split != "train" and text in seen_texts:
+                continue
             seen.add(fingerprint)
+            seen_texts.add(text)
             quota[label] -= 1
             answer, branches = self.solve(params)
             question, template_id = self.render(params, rng)
@@ -1494,13 +2344,15 @@ def main() -> None:
     generator = AIActGenerator()
     out = Path(args.out_dir)
     seen: set[str] = set()
+    seen_texts: set[str] = set()
     stats: dict[str, Any] = {"seed": args.seed}
     for split, n in (("train", args.n_train), ("test", args.n_test), ("ood", args.n_ood)):
-        problems = generator.generate(n, split, args.seed, exclude=seen)
+        problems = generator.generate(n, split, args.seed, exclude=seen, exclude_texts=seen_texts)
         keys = {generator.key(p.params) for p in problems}
         stats[split] = describe(problems, generator)
         stats[split]["overlap_with_previous_splits"] = len(keys & seen)
         seen |= keys
+        seen_texts |= {generator.case_text(p.params) for p in problems}
         name = "test_ood" if split == "ood" else split
         write_jsonl(problems, out / f"{name}.jsonl", split)
         print(f"{len(problems)} problemas -> {out / f'{name}.jsonl'}")
