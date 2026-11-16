@@ -15,8 +15,9 @@ sistema de IA y necesitan una primera clasificación razonada, sin leerse las 14
 reglamento cada vez ni encargar una consulta externa. No sustituye a un jurista: da la etiqueta,
 la cita y el razonamiento para que alguien los revise.
 
-> **Estado (2026-11-13):** fases 1, 2 y 3 terminadas y servidas por la API. La fase 4 (agente)
-> está en construcción. El cuaderno de experimentos completo está en
+> **Estado (2026-11-16):** fases 1, 2 y 3 terminadas y servidas por la API. La fase 4 (agente)
+> funciona y está medida con los cerebros `base` y `thinking`; faltan el cerebro `rlm` y los
+> experimentos de memoria y de herramienta rota. El cuaderno de experimentos completo está en
 > [`docs/EXPERIMENTS.md`](docs/EXPERIMENTS.md).
 
 ---
@@ -108,7 +109,21 @@ Conjunto dorado de 71 preguntas (57 con respuesta y 14 sin ella). Intervalos de 
 
 ### Fase 4 · Agente (`/agent`)
 
-En construcción.
+Bucle ReAct propio sobre las herramientas de la fase 2 y la base de conocimiento de la fase 3,
+comparado con un `CodeAgent` de `smolagents`. Banco de 20 tareas de al menos dos herramientas
+(2 imposibles), 10 pasos como máximo. Intervalos de Wilson al 95 %.
+
+| Agente | Cerebro | Éxito | Herramientas requeridas | s/tarea |
+|---|---|---|---|---|
+| **JSON, plantilla nativa de Qwen3** | **Qwen3-1.7B thinking** | **45 % [26, 66]** | 65 % | 29 |
+| JSON, prompt ReAct de texto | Qwen3-1.7B thinking | 30 % [15, 52] | 35 % | 42 |
+| Código (smolagents) | Qwen3-1.7B thinking | 20 % [8, 42] | 45 % | 172 |
+| JSON, plantilla nativa de Qwen3 | Qwen3-0.6B base | 5 % [1, 24] | 5 % | 5 |
+
+El 0.6B no llega a llamar a las herramientas. Los fallos del 1.7B ya no son de formato, sino de
+contenido: le pasa hechos equivocados a `classify_risk` o escoge mal el dato que le devuelve la
+base de conocimiento. Las dos tareas imposibles las resuelve con «No puedo responder». El cerebro
+`rlm` (Qwen3-0.6B + GRPO) está pendiente.
 
 ---
 

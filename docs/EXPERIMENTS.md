@@ -1532,3 +1532,144 @@ están en el texto del prompt de sistema, pero sí en el contexto, así que la m
 aparte para no quedarse corta. El banco completo se repite con los dos prompts y los tres
 cerebros en la siguiente sesión de GPU. La ejecución de `base` con el prompt antiguo queda fuera
 del repositorio (`logs/phase4/`), porque se hizo con las reglas que todavía llevaban el ejemplo.
+
+### 2026-11-16 · Fase 4 · Banco completo: plantilla nativa, prompt de texto y agente de código
+
+**Qué queríamos saber.** Con el bucle ya cerrado y la plantilla nativa por defecto: qué cerebro
+gana en las 20 tareas, si la ventaja de la plantilla nativa en el primer paso (15/20 frente a
+2/20) se mantiene en la tarea completa, y si el agente de código cumple lo que promete el
+artículo de CodeAct (más éxito y menos pasos al escribir las acciones en Python).
+
+**Qué hicimos.** Tres ejecuciones seguidas en la misma partición MIG de la H200 (unos 16 GB),
+sin nada más en paralelo para que los segundos por tarea sean comparables. Todas con 10 pasos
+como máximo y `--resume`:
+
+```bash
+ARCA_AGENT_PROMPT=native uv run python -m agent.evaluate --bench agent/bench/tasks.jsonl \
+    --brains base thinking --out reports/phase4_eval.json --resume
+ARCA_AGENT_PROMPT=text uv run python -m agent.evaluate --bench agent/bench/tasks.jsonl \
+    --brains base thinking --out reports/phase4_eval_text_prompt.json --resume
+uv run python -m agent.code_agent --bench agent/bench/tasks.jsonl \
+    --brains thinking base --out reports/phase4_code_agent.json --resume
+```
+
+El prompt de texto ya va sin el ejemplo «Art. 50.1». `rlm` no está: el adaptador de la fase 1
+aún no está en `rlm/weights/final_rlm_lora/`, y se añadirá con `--resume` sin repetir lo demás.
+
+*Un tropiezo con la memoria de la GPU.* En el agente de código, 8 tareas (2 de `thinking` y 6 de
+`base`) acabaron en `CUDA out of memory`, con 0 pasos. No caían en las tareas largas, sino
+sueltas y sobre todo en `base`, que corrió después de `thinking` en el mismo proceso, con el 1.7B
+todavía cargado junto al pipeline de la fase 3. Contarlas como fallos del agente habría sido
+injusto. Guardamos el JSON original en `logs/phase4/code_agent_with_oom.json`, quitamos solo esas
+8 filas y las repetimos con un proceso por cerebro y
+`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`. Ya no hubo ningún OOM. Las ejecuciones JSON
+no tuvieron ninguno.
+
+**Qué pasó.** Éxito con intervalo de Wilson al 95 %. «Herramientas» es la fracción de tareas en
+las que el agente llamó a todas las herramientas requeridas.
+
+| Agente | Cerebro | Éxito | Herramientas | Pasos | Tokens | s/tarea | Cómo terminan |
+|---|---|---|---|---|---|---|---|
+| **JSON, plantilla nativa** | **thinking** | **9/20 = 45 % [26, 66]** | 65 % | 3,5 | 21 470 | 29 | 11 `final_answer`, 8 respuesta directa, 1 bucle |
+| JSON, prompt de texto | thinking | 6/20 = 30 % [15, 52] | 35 % | 3,8 | 23 710 | 42 | 10 `final_answer`, 10 respuesta directa |
+| Código (smolagents) | thinking | 4/20 = 20 % [8, 42] | 45 % | 6,8 | 80 723 | 172 | 13 `final_answer`, 7 agotan los pasos |
+| JSON, plantilla nativa | base | 1/20 = 5 % [1, 24] | 5 % | 2,1 | 11 066 | 5 | 19 respuesta directa |
+| JSON, prompt de texto | base | 1/20 = 5 % [1, 24] | 5 % | 9,2 | 51 266 | 14 | 18 agotan los pasos |
+| Código (smolagents) | base | 0/20 = 0 % [0, 16] | 15 % | 9,6 | 77 358 | 38 | 15 agotan los pasos |
+
+Éxito por familia con `thinking` y la plantilla nativa: imposibles 2/2, clasificar + informe 2/2,
+base de conocimiento + multa 1/1, clasificar + citar 2/4, dos multas + calculadora 1/2,
+clasificar + multa 1/5, base de conocimiento + cálculo 0/3 y base de conocimiento + clasificar 0/1.
+Los dos únicos aciertos de `base` (uno por prompt) son la misma tarea imposible, el artículo 150.
+
+*El 0.6B no actúa, y falla de forma distinta según el prompt.* Con la plantilla nativa responde
+directamente en 19 de 20 tareas. En 5 de ellas la «respuesta» es una llamada escrita con el
+nombre de la herramienta como etiqueta, `<search_knowledge_base>{...}</search_knowledge_base>`,
+lo mismo que vimos en el primer paso. El bucle no la reconoce como intento de llamada (solo
+reconoce `Action:` en prosa) y la acepta como `plain_answer`. Cuando sí llama a `classify_risk`
+vuelve a mandar casi todos los hechos a falso, y el motor responde «riesgo mínimo». Con el prompt
+de texto pasa lo contrario: intenta llamar en cada paso, escribe el nombre fuera del JSON y agota
+los 10 pasos en 18 tareas.
+
+*Dónde falla el 1.7B con la plantilla nativa* (11 tareas):
+
+- **Hechos mal extraídos para `classify_risk`** (4: `classify-fine-01` y `-04`,
+  `classify-lookup-03`, `kb-classify-01`). La herramienta clasifica bien lo que recibe, pero el
+  modelo le pasa hechos equivocados. Las cámaras que reconocen emociones de los empleados llegan
+  con `emotion_recognition: false`, y sale alto riesgo en lugar de prohibido. A las
+  ultrasuplantaciones les pone `annex_iii_use_cases: ['4.a']` (selección de personal). El valor
+  `'4.a'` aparece en 6 de las 20 llamadas a `classify_risk` y viene del ejemplo de la descripción
+  de la herramienta (`"e.g. '4.a' recruitment"`, `tool_use/tools.py:126`). Es el mismo efecto
+  que tenía «Art. 50.1» en la prueba del primer paso, ahora dentro de las definiciones de la fase 2.
+  También aparece `annex_i_product: 'motor_vehicles'` sin motivo en 6 llamadas.
+- **Base de conocimiento** (3 de las 4 tareas `kb-calc` y `kb-classify`). En `kb-calc-02`, el
+  fragmento recuperado (considerandos 111–120) no trae el umbral de 10^25 FLOP, y el agente
+  responde con razón que no lo sabe. Es un fallo de recuperación, no del agente. En `kb-calc-01`
+  y `kb-calc-03`, la fecha correcta estaba en la observación, pero el modelo escogió otra
+  (agosto de 2026 y agosto de 2025) y calculó a partir de ella.
+- **Cálculo sobre la observación** (`fine-calc-02`). La herramienta da bien la multa (15 M€), pero
+  el modelo dice que es el 3 % de la facturación, cuando 15/300 es un 5 %.
+- **Bucle** (`classify-fine-05`): seis llamadas a `classify_risk`, las últimas idénticas. La
+  detección de bucles cortó la ejecución, como esperábamos.
+
+El bucle se recupera bien: en las 71 acciones de `thinking` con la plantilla nativa solo hay 8
+observaciones de error, y ninguna lo rompe.
+
+*La plantilla nativa frente al prompt de texto* (`thinking`). Hay 4 tareas que solo acierta la
+nativa y 1 que solo acierta la de texto. La nativa usa casi el doble de las herramientas
+requeridas (65 % frente a 35 %) y es más rápida. Con 20 tareas, la diferencia de éxito no es
+significativa (McNemar exacto, p = 0,38), pero va en la misma dirección que la prueba del primer
+paso.
+
+*El agente de código.* Con `thinking`, hay 6 tareas que solo acierta el agente JSON y 1 que solo
+acierta el de código (`classify-fine-05`, la que el JSON perdió por bucle); p = 0,13. Usa unas
+cuatro veces más tokens y seis veces más tiempo por tarea, y casi el doble de pasos. De sus 135
+pasos, 107 devuelven un error. Los más frecuentes:
+
+- `scope_exclusion` con un valor no válido (42). Al escribir la llamada en Python, el modelo
+  rellena los 40 parámetros de `classify_risk` uno a uno, con un comentario en cada línea, y pone
+  `False` en los campos que son enumeraciones. En JSON los deja a `null`.
+- El parser de smolagents no encuentra el bloque de código (30).
+- Código cortado, con un `(` sin cerrar (13). Una llamada de 40 argumentos comentados no cabe.
+
+Con `base`, de 191 pasos, 155 son errores. Pasa los argumentos por posición (47; nuestras
+herramientas los piden por nombre). Le manda a `calculator` expresiones que no acepta (30). Divide
+la cadena de texto que devuelve una herramienta como si fuera un número (10 + 9). Y todos sus
+errores de código cortado (23) miden entre 2.065 y 2.352 caracteres: el límite de 512 tokens
+nuevos que damos sin razonamiento. Hay además 8 pasos en los que escribe las multas a mano
+(35.000.000, 15.000.000...) en lugar de llamar a `compute_max_fine`.
+
+*La memoria no llegó a intervenir.* Solo hubo una compresión en las 80 ejecuciones JSON (`base`
+con el prompt de texto, agotando pasos). Las tareas del banco se resuelven en 3 o 4 pasos y no
+llegan al presupuesto de 9000 tokens. El banco no mide la memoria: hace falta un experimento
+aparte con tareas largas.
+
+**Qué concluimos.**
+
+- **Gana `thinking` con la plantilla nativa**: 45 % frente al 5 % del 0.6B. El 0.6B no llega a
+  actuar: con la plantilla nativa no llama, y con el prompt de texto no sabe escribir la llamada.
+  El 1.7B sí sigue el bucle, y sus fallos ya no son de formato. Son de extraer bien los hechos
+  para `classify_risk`, de leer bien lo que devuelve la base de conocimiento y de hacer la cuenta
+  con lo observado. Falta `rlm` para saber si el entrenamiento de la fase 1 ayuda al 0.6B a
+  actuar. Como `rlm` aprendió a clasificar, nuestra hipótesis es que mejorará la extracción de
+  hechos pero no el formato de la llamada, que no se entrenó.
+- **Con nuestros modelos no se cumple lo de CodeAct.** El agente de código acierta menos, tarda
+  seis veces más y gasta cuatro veces más tokens. Creemos que es por tres motivos. Qwen3 está
+  entrenado para llamar funciones en JSON, que es el formato de la plantilla nativa. Nuestras
+  herramientas tienen esquemas grandes y con enumeraciones, que en JSON se rellenan bien con
+  `null` y en Python el modelo escribe argumento por argumento. Y nuestras tareas piden dos o
+  tres llamadas seguidas, sin bucles ni composición, que es justo donde el código aporta. El
+  artículo usa modelos más grandes y tareas con más control de flujo. El único acierto propio del
+  agente de código vino de poder encadenar sin repetir la misma llamada.
+- **Siguientes pasos.**
+  - Quitar el ejemplo `'4.a'` de la descripción de `classify_risk`. Afecta también a `/tools`,
+    así que habrá que medir antes la fase 2.
+  - Que el bucle reconozca `<nombre_herramienta>{...}</nombre_herramienta>` como intento de
+    llamada.
+  - Los experimentos de memoria con tareas largas y de herramienta rota.
+  - Añadir `rlm` cuando esté el adaptador.
+
+Ficheros: `reports/phase4_eval.json`, `reports/phase4_eval_text_prompt.json`,
+`reports/phase4_code_agent.json`. Logs (no versionados): `logs/phase4/eval_native.log`,
+`eval_text_prompt_v2.log`, `code_agent.log`, `code_agent_rerun_*.log` y
+`code_agent_with_oom.json`.

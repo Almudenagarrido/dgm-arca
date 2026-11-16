@@ -160,4 +160,37 @@ curl -s -X POST localhost:8000/agent -H 'Content-Type: application/json' -d '{
 ```
 
 La respuesta añade tres campos opcionales al contrato: `stop_reason`, `memory_compressions` y, en la
-petición, `session_id`. Los resultados y su análisis están en `docs/EXPERIMENTS.md`.
+petición, `session_id`.
+
+En una GPU de 16 GB (la partición MIG del DGX), lanzad el agente de código con un cerebro por
+proceso y `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`. Con los dos cerebros y la tubería de
+la fase 3 en el mismo proceso, se quedó sin memoria en 8 tareas.
+
+## Resultados
+
+Banco de 20 tareas, 10 pasos como máximo, éxito con intervalo de Wilson al 95 %. Falta `rlm`,
+pendiente del adaptador de la fase 1.
+
+| Agente | Cerebro | Éxito | Herramientas requeridas | Pasos | s/tarea |
+|---|---|---|---|---|---|
+| **JSON, plantilla nativa** | **thinking** | **45 % [26, 66]** | 65 % | 3,5 | 29 |
+| JSON, prompt de texto | thinking | 30 % [15, 52] | 35 % | 3,8 | 42 |
+| Código (smolagents) | thinking | 20 % [8, 42] | 45 % | 6,8 | 172 |
+| JSON, plantilla nativa | base | 5 % [1, 24] | 5 % | 2,1 | 5 |
+| JSON, prompt de texto | base | 5 % [1, 24] | 5 % | 9,2 | 14 |
+| Código (smolagents) | base | 0 % [0, 16] | 15 % | 9,6 | 38 |
+
+- **El 0.6B no llega a actuar.** Con la plantilla nativa responde sin llamar a nada (19 de 20).
+  Con el prompt de texto no sabe escribir la llamada y agota los pasos (18 de 20).
+- **Los fallos del 1.7B ya no son de formato.** Son de contenido: pasa a `classify_risk` hechos
+  equivocados (copia el ejemplo `'4.a'` de la descripción en 6 de 20 llamadas), escoge mal la
+  fecha que le devuelve la base de conocimiento y se equivoca al hacer la cuenta con lo que
+  observa.
+- **Las dos imposibles las resuelve bien.** Responde «No puedo responder» en lugar de inventar.
+- **El agente de código acierta menos y tarda seis veces más.** Al escribir en Python los 40
+  argumentos de `classify_risk`, pone `False` donde hay enumeraciones y se le corta el código.
+  Con dos o tres llamadas seguidas, el código no aporta nada sobre el JSON.
+- **La memoria apenas intervino.** Las tareas se resuelven en 3 o 4 pasos, así que hay que medirla
+  aparte.
+
+El análisis completo, tarea a tarea, está en `docs/EXPERIMENTS.md`.
