@@ -1390,3 +1390,145 @@ las cifras de la fase 3 no cambian.
 Ficheros: `rlm/data/test.jsonl` y `test_ood.jsonl` (nuevos), `test_v1.jsonl` y
 `test_ood_v1.jsonl` (antiguos), `reports/eval_test*.json` (nuevos) y `eval_test*_v1.json`
 (antiguos), `reports/phase1_data_audit.json`, `logs/eval_test_v2.log`.
+
+---
+
+## Fase 4 · Agente
+
+### 2026-11-16 · Fase 4 · Bucle ReAct, memoria, banco de 20 tareas y agente de código
+
+**Qué queríamos saber.** Si podíamos juntar las tres fases en un bucle ReAct propio que
+complete tareas de varias herramientas, y con qué decisiones de diseño. Antes de medir nada
+quisimos que el bucle fuera robusto ante los fallos típicos de un modelo pequeño.
+
+**Qué hicimos.**
+
+- *Bucle* (`agent/react_agent.py`): Pensamiento → Acción → Observación sin framework, con el
+  parser y el registro de la fase 2. Ejecutamos una acción por paso: si el modelo escribe varios
+  `<tool_call>`, se ejecuta el primero y la observación avisa de que el resto se ignoró. Así
+  `max_steps` cuenta acciones reales. Los timeouts son por herramienta y la herramienta corre en
+  un hilo: 30 s para `lookup_ai_act` (va a la red), 60 s para la base de conocimiento y 10 s
+  para el resto. Todos los errores vuelven como observación `Error: ...`. Una llamada idéntica a
+  una anterior no se vuelve a ejecutar, y a la tercera repetición la ejecución se corta
+  (`loop_detected`). `write_assessment_report` solo se ejecuta si la tarea pide un informe
+  (`ARCA_AGENT_CONFIRM=task`): la petición del usuario cuenta como confirmación. No elegimos
+  `always`, como en la fase 2, porque un agente autónomo no debería escribir ficheros que nadie
+  ha pedido.
+- *Cerebros*: `base` = Qwen3-0.6B sin razonamiento; `rlm` = el mismo modelo con nuestro adaptador
+  GRPO, que razona con `<think>` como en su entrenamiento; `thinking` = Qwen3-1.7B con
+  razonamiento nativo. El prompt y las herramientas son los mismos para los tres. Base y RLM
+  tienen el mismo tamaño, así que esa comparación aísla el efecto del entrenamiento. El 1.7B es
+  la referencia de «razonamiento nativo» que propone la plantilla.
+- *Base de conocimiento*: `search_knowledge_base` usa la tubería de la fase 3 tal cual (híbrido
+  λ = 0,3, consulta traducida y reranker), con los fragmentos recortados a 700 caracteres. Si el
+  mejor fragmento no pasa el umbral de «No lo sé» (0,975), lo dice al principio.
+- *Memoria* (`agent/memory.py`): presupuesto de 9000 tokens. El prompt de sistema ya ocupa
+  4817: las definiciones de las herramientas, sobre todo los 40 campos de `classify_risk`, se
+  comen la mitad del presupuesto antes de empezar. Política: la tarea en curso se fija y no se
+  resume nunca; los seis últimos mensajes se conservan, sin separar nunca una observación de su
+  acción; primero se recortan las observaciones antiguas a 600 caracteres (son casi todo el
+  peso) y solo si no basta se resume la parte vieja con el propio cerebro. Con `session_id` la
+  memoria sobrevive entre peticiones.
+- *Banco* (`agent/bench/build_tasks.py`, 20 tareas): clasificar + multa (5), clasificar + citar
+  (4), base de conocimiento + cálculo o clasificación (5), clasificar + PDF (2), dos multas +
+  calculadora (2) e imposibles (2). Todas necesitan al menos dos herramientas distintas además
+  de `final_answer`. Calculamos cada respuesta esperada con las herramientas reales o la leímos
+  en el corpus (Art. 51.2: 10^25; Art. 99.6: la menor de las dos cantidades para pymes; Art.
+  113: 2-2-2025 y 2-8-2025). Las cantidades se comprueban con una expresión regular, porque las
+  herramientas escriben `140.000.000 EUR` y el tipo `number` de la plantilla lo lee como 140. Un
+  test comprueba que cada condición acepta la respuesta de referencia y rechaza «No puedo
+  responder».
+- *Agente de código* (`agent/code_agent.py`): `smolagents.CodeAgent` con nuestros cerebros (un
+  `Model` que llama a `ReActAgent.generate`) y nuestras herramientas, que pasan por
+  `ReActAgent.execute`. Así lo único que cambia es el formato de la acción (código Python en
+  lugar de JSON) y el prompt (el de smolagents, más nuestras `DOMAIN_RULES`).
+
+**Qué pasó en las pruebas de humo** (dos tareas por agente, antes del banco completo):
+
+1. *El modelo base escribe la acción en prosa.* Respondía `Thought: ... Action: compute_max_fine`,
+   sin bloque `<tool_call>`, y la primera versión lo aceptaba como respuesta final
+   (`plain_answer`), así que acababa en un paso sin llamar a nada. Ahora un texto con una línea
+   `Action:` cuenta como intento de llamada: recibe un error con el formato esperado, y en el
+   paso siguiente el modelo ya escribe el `<tool_call>`.
+2. *El 0.6B base llama a `classify_risk` con los 40 hechos a `null`.* El motor responde «riesgo
+   mínimo» (ningún hecho activo), y el modelo lo da por bueno. En la misma tarea llamó a
+   `compute_max_fine` con `incorrect_information` e `is_sme: true` para una empresa de 2.000
+   millones de facturación, sin nada en la tarea que lo justifique. Es el fallo que
+   esperábamos de un modelo pequeño: copia el esquema en lugar de extraer los hechos.
+3. *El 1.7B agota los 2048 tokens pensando.* En el agente de código, un paso llegó al parser de
+   smolagents como un `<think>` sin cerrar: el razonamiento ocupó los 2048 tokens nuevos que
+   permitimos con razonamiento y no quedó sitio para el código. Al investigarlo vimos además un
+   problema de diseño. `generate(stop_strings=[...])` busca las secuencias de parada
+   (`</tool_call>`, `</code>`) en todo el texto generado, incluido el razonamiento, así que un
+   modelo que escriba un borrador de la llamada mientras piensa se cortaría antes de actuar. No
+   tenemos ninguna traza en la que se vea, pero puede pasar. Escribimos un criterio de parada
+   (`StopOutsideThinking`) que sigue las etiquetas `<think>` y `</think>` (un token cada una en
+   Qwen3) y solo busca las secuencias fuera del razonamiento. Afecta a los dos agentes, así que
+   por precaución descartamos la primera ejecución del banco con `thinking`, que se había lanzado
+   con el criterio antiguo.
+4. *El agente de código con el 1.7B* escribió en el código las multas como constantes (35 M€
+   y 7,5 M€) en lugar de llamar a `compute_max_fine`, y falló la tarea: no aplicó la regla del
+   «mayor de los dos». En otra tarea llamó a `final_answer` con cuatro y con dos argumentos
+   posicionales hasta agotar los pasos. El agente JSON no puede caer en lo primero, porque su
+   única forma de calcular es llamar a la herramienta.
+
+**Qué concluimos.** El bucle se comporta como queríamos: errores, timeouts, bucles y llamadas
+mal formadas vuelven al modelo y no rompen la ejecución, y la traza registra lo que pasó de
+verdad. Lo comprueban 18 tests sin GPU con un cerebro de guion (`tests/test_react_agent.py`,
+`tests/test_code_agent.py`). Los resultados del banco con los tres cerebros van en la entrada
+siguiente.
+
+### 2026-11-16 · Fase 4 · ¿El fallo de formato es del modelo o del prompt? Prueba del primer paso
+
+**Qué queríamos saber.** En la primera ejecución completa del banco con `base` (Qwen3-0.6B,
+prompt ReAct de las diapositivas con las herramientas como texto), el agente acertó 1 de 20
+tareas y agotó los 10 pasos en 14. De sus 163 pasos, solo 19 llevaban una llamada válida (3 de
+ellas a `final_answer` y 2 al informe, que se rechazó por no pedirse). En 100
+el error era el mismo: «tool_call JSON has no 'name' field». Al reproducir el primer paso vimos
+qué escribía:
+
+```
+Action: classify_risk
+<tool_call>
+{"reference": "Art. 50.1", "language": "es"}
+</tool_call>
+```
+
+El nombre va fuera del JSON, detrás de la etiqueta `Action:` del prompt, y los argumentos son de
+otra herramienta: copian el ejemplo de nuestras reglas («lookup_ai_act with a reference such as
+"Art. 50.1"»). Queríamos saber si era culpa del modelo o del prompt antes de gastar horas de GPU
+en el resto del banco.
+
+**Qué hicimos.** `uv run python -m agent.first_step_ablation --brain base`: solo el primer paso
+de las 20 tareas (greedy, sin razonamiento), con cuatro prompts que combinan dos cambios. Uno es
+el formato: el prompt de las diapositivas con las herramientas como texto, o la plantilla nativa
+de Qwen3 (`apply_chat_template(tools=...)`, la que eligió la fase 2 para `/tools`). El otro es
+quitar o no el ejemplo «Art. 50.1».
+
+**Qué pasó** (`reports/phase4_first_step_ablation.json`):
+
+| Prompt | Llamadas bien formadas | Herramienta de las requeridas | Sin `name` | Copia «Art. 50.1» |
+|---|---|---|---|---|
+| Texto, con ejemplo (el de la primera ejecución) | 2/20 | 2/20 | 10 | 0 |
+| Texto, sin ejemplo | 3/20 | 3/20 | 16 | 0 |
+| Nativo, con ejemplo | 14/20 | 9/20 | 0 | 4 |
+| **Nativo, sin ejemplo** | **15/20** | 8/20 | 0 | 0 |
+
+Quitar el ejemplo no arregla el formato: con el prompt de texto el modelo sigue escribiendo el
+nombre fuera del JSON. Con la plantilla nativa las llamadas sin `name` desaparecen. El ejemplo,
+en cambio, tiene otro efecto: con la plantilla nativa el modelo lo copia como argumento en 4
+tareas. Lo que queda con el prompt nativo sin ejemplo ya es del modelo: en 5 tareas escribe
+`<search_knowledge_base>{...}</search_knowledge_base>`, usando el nombre de la herramienta como
+etiqueta; en varias de clasificación empieza consultando `lookup_ai_act` en lugar de llamar a
+`classify_risk`; y en las dos de multas pone `is_sme: true` sin que la tarea diga que sea pyme.
+
+**Qué concluimos.** El fallo de formato era sobre todo nuestro. El prompt de las diapositivas no
+es el formato con el que Qwen3 aprendió a llamar funciones, y la etiqueta `Action:` invita a
+escribir el nombre fuera del bloque. Es lo mismo que vio la fase 2, donde la plantilla nativa
+daba argumentos más limpios. El agente pasa a usar la plantilla nativa por defecto
+(`ARCA_AGENT_PROMPT=native`; `text` conserva el prompt anterior para la comparación), y las
+reglas del dominio ya no llevan argumentos de ejemplo. Con el prompt nativo, las definiciones no
+están en el texto del prompt de sistema, pero sí en el contexto, así que la memoria las cuenta
+aparte para no quedarse corta. El banco completo se repite con los dos prompts y los tres
+cerebros en la siguiente sesión de GPU. La ejecución de `base` con el prompt antiguo queda fuera
+del repositorio (`logs/phase4/`), porque se hizo con las reglas que todavía llevaban el ejemplo.

@@ -96,7 +96,7 @@ rag/corpus/*.pdf ──► rag/ingest.py ──► rag/chunking.py ──► rag
                      (Document)        (Chunk: id         (Qwen3-Embedding)  (BM25 / denso / híbrido λ)
                                         <doc>-<idx>)                              │
                                                                                   ▼
-rag/gold/*.jsonl  (50 preguntas → chunk_ids) ─────────────────────────────► rag/evaluate.py
+rag/gold/*.jsonl  (71 preguntas → evidencias) ────────────────────────────► rag/evaluate.py
                                                                             (Recall@k, MRR → elegir λ)
 ```
 
@@ -109,7 +109,7 @@ rag/gold/*.jsonl  (50 preguntas → chunk_ids) ───────────
 | `rag/evaluate.py` | dado + nuestro | Recall@k y MRR de los tres retrievers; λ elegido con datos. |
 | `rag/generate.py` | dado + nuestro | Respuesta con citas y comprobación de que existen. |
 | `rag/corpus/` | nuestro | Reglamento 2024/1689, guías de prácticas prohibidas, borrador de guías de alto riesgo. |
-| `rag/gold/` | nuestro | 50 preguntas anotadas con el `chunk_id` que las responde. |
+| `rag/gold/` | nuestro | 71 preguntas (57 con respuesta y 14 sin ella) con el pasaje que las responde, y 36 de validación para el umbral. |
 
 ---
 
@@ -133,9 +133,9 @@ rag/gold/*.jsonl  (50 preguntas → chunk_ids) ───────────
    ├ rlm/rewards   ├ tool_use/registry    (+ chunking,            ├ tool_use/tools.default_registry
    └ rlm/verifier  └ tool_use/tools          embed, ingest)       ├ tool_use/registry
      (+ ★AIAct        │                                           ├ tool_use/parser
-      Verifier)       ├ search_eurlex★   → API HTTP EUR-Lex       ├ agent/prompts
+      Verifier)       ├ lookup_ai_act★   → API CELLAR (UE)        ├ agent/prompts
                       ├ classify_risk★  - - -► ★aiact_rules       ├ agent/memory  - - - (política nuestra)
-                      └ generate_report★ → escribe PDF            └ cerebro: base | weights/grpo | thinking
+                      └ write_assessment_report★ → escribe PDF    └ cerebro: base | weights/grpo | thinking
                                                                       (ARCA_RLM_BASE_MODEL /
                                                                        ARCA_RLM_ADAPTER /
                                                                        ARCA_THINKING_MODEL)
@@ -155,15 +155,24 @@ rag/gold/*.jsonl  (50 preguntas → chunk_ids) ───────────
 |---|---|---|
 | `tool_use/registry.py` | dado | Funciones tipadas → JSON Schema, validación de argumentos. |
 | `tool_use/parser.py` | dado | Detecta `<tool_call>` en la salida del modelo. |
-| `tool_use/tools.py` | ejemplo → nuestro | `search_eurlex` (consulta HTTP), `classify_risk` (motor de reglas), `generate_risk_report` (escribe PDF). |
+| `tool_use/tools.py` | ejemplo → nuestro | `lookup_ai_act` (API CELLAR), `classify_risk` (motor de reglas), `compute_max_fine`, `write_assessment_report` (escribe PDF), `calculator`. |
 | `tool_use/executor.py` | nuestro | Bucle de cinco pasos a mano, multi-step y llamadas paralelas. |
 | `tool_use/evaluate.py` | dado | Precisión de selección y de argumentos. |
-| `tool_use/bench/` | nuestro | 30 casos, incluidos casos sin herramienta. |
+| `tool_use/bench/` | nuestro | 34 casos, incluidos 6 sin herramienta. |
 
 ### Fase 4 (`agent/`)
 
 | Fichero | Estado | Qué ponemos |
 |---|---|---|
+| `agent/prompts.py` | dado + nuestro | Prompt ReAct y `DOMAIN_RULES` (qué herramienta para qué, «No puedo responder»). |
+| `agent/memory.py` | dado + nuestro | Memoria con presupuesto de tokens; política nuestra: tarea fijada, recorte de observaciones, resumen. |
+| `agent/react_agent.py` | nuestro | Bucle ReAct con `final_answer`, límite de pasos, timeouts, recuperación de errores, detección de bucles, confirmación y tres cerebros. |
+| `agent/code_agent.py` | nuestro | `smolagents.CodeAgent` con los mismos cerebros y herramientas, como contraste. |
+| `agent/evaluate.py` | dado + ampliado | Éxito, uso de herramientas, pasos, tokens, motivos de parada, por cerebro. |
+| `agent/ui.py` | dado | Visor de trazas contra la API. |
+| `agent/bench/build_tasks.py` | nuestro | 20 tareas de al menos dos herramientas, 2 imposibles (`tasks.jsonl`). |
+
+---|---|---|
 | `agent/prompts.py` | dado | Prompt ReAct. |
 | `agent/memory.py` | dado + nuestro | Memoria con presupuesto de tokens; política de resumen nuestra. |
 | `agent/react_agent.py` | nuestro | Bucle ReAct con `final_answer`, límite de pasos, timeouts, recuperación de errores, cerebro intercambiable. |
@@ -176,9 +185,10 @@ rag/gold/*.jsonl  (50 preguntas → chunk_ids) ───────────
 ## 5. Evaluadores y tests
 
 ```
-tool_use/evaluate.py ──► executor.run_tool_loop   + tool_use/bench/*.jsonl  (30 casos)
-agent/evaluate.py    ──► react_agent.ReActAgent    + agent/bench/*.jsonl     (20 tareas)
-rag/evaluate.py      ──► retrievers               + rag/gold/*.jsonl        (50 preguntas)
+tool_use/evaluate.py ──► executor.run_tool_loop   + tool_use/bench/*.jsonl  (34 casos)
+agent/evaluate.py    ──► react_agent.ReActAgent    + agent/bench/tasks.jsonl (20 tareas)
+agent/code_agent.py  ──► smolagents.CodeAgent      + agent/bench/tasks.jsonl (mismas tareas)
+rag/evaluate.py      ──► retrievers               + rag/gold/*.jsonl        (71 preguntas)
 rlm/evaluate.py      ──► modelos base/SFT/GRPO    + rlm/data/test(_ood).jsonl
 
 tests/test_verifier.py       → rlm/verifier.py (+ ★ tests del motor de reglas)
@@ -187,7 +197,9 @@ tests/test_grpo_step.py      → rlm/grpo_step.py
 tests/test_generate_problems → rlm/generate_problems.py
 tests/test_tool_*.py         → tool_use/parser, registry
 tests/test_rag.py            → rag/evaluate (métricas), rag/generate (citas)
-tests/test_agent.py          → agent/memory, agent/evaluate
+tests/test_agent.py          → agent/memory, agent/evaluate, banco de tareas
+tests/test_react_agent.py    → agent/react_agent (bucle con un cerebro de guion, sin GPU)
+tests/test_code_agent.py     → agent/code_agent (herramientas envueltas para smolagents)
 tests/test_api.py            → api/app (arranca con todo en 501)
 ```
 
