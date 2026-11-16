@@ -141,3 +141,7 @@ class AgentResponse(BaseModel):
     succeeded: bool = True
     model: str = ""
     tokens_used: int = 0
+    # Optional extras: why the loop stopped (final_answer, plain_answer, max_steps,
+    # loop_detected) and how many times the memory summarised old turns.
+    stop_reason: str = ""
+    memory_compressions: int = 0

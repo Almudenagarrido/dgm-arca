@@ -1,4 +1,4 @@
-"""The API must start with every phase pending and answer 501 with a useful message."""
+"""The API starts, lists the four phases and validates requests (no model runs here)."""
 
 from fastapi.testclient import TestClient
 
@@ -14,15 +14,6 @@ def test_health_lists_all_phases():
     assert set(body["phases"]) == {"reasoning", "tools", "rag", "agent"}
     for phase in body["phases"].values():
         assert phase["status"] in {"ready", "pending", "error"}
-
-
-def test_pending_phase_returns_501_with_phase_name():
-    # /agent is still pending; implemented phases load a model, which unit tests must not do.
-    response = client.post("/agent", json={"task": "Clasifica un chatbot"})
-    if response.status_code == 501:
-        assert response.json()["detail"]["phase"] == "agent"
-    else:
-        assert response.status_code == 200
 
 
 def test_request_validation():
