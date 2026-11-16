@@ -17,7 +17,7 @@ docker compose up api
 | `POST /reasoning` | 1 | `question`, `expected_answer?`, `max_new_tokens?` | `thinking`, `answer`, `raw`, `has_valid_format`, `verifier?`, `tokens_generated`, `model` |
 | `POST /tools` | 2 | `query`, `max_turns?` | `answer`, `tool_calls[]` (nombre, argumentos, resultado, ok, error, latencia), `turns`, `model` |
 | `POST /rag` | 3 | `question`, `top_k?`, `retriever?` (`dense`, `bm25`, `hybrid`) | `answer`, `chunks[]` (id, fuente, puntuación, texto), `citations[]`, `retriever`, `model` |
-| `POST /agent` | 4 | `task`, `max_steps?`, `brain?` (`base`, `rlm`, `thinking`) | `final_answer`, `steps[]` (pensamiento, acción, observación), `n_steps`, `succeeded`, `model`, `tokens_used` |
+| `POST /agent` | 4 | `task`, `max_steps?`, `brain?` (`base`, `rlm`, `thinking`), `session_id?` | `final_answer`, `steps[]` (pensamiento, acción, observación), `n_steps`, `succeeded`, `model`, `tokens_used`, `stop_reason`, `memory_compressions` |
 
 Una fase que todavía no está implementada responde `501` con el nombre de la fase y un
 mensaje. Así la API siempre arranca y podéis entregar por partes.
@@ -32,7 +32,7 @@ tocarlo: basta con implementar los puntos de entrada que espera.
 | 1 | `rlm.inference.ReasoningModel` | `ARCA_RLM_ADAPTER`, `ARCA_RLM_BASE_MODEL`, `ARCA_RLM_VERIFIER` |
 | 2 | `tool_use.executor.ToolLoop` | herramientas registradas en `tool_use.tools.default_registry` |
 | 3 | `rag.generate.RagPipeline` | corpus en `rag/corpus/`, índice en `rag/index/` |
-| 4 | `agent.react_agent.ReActAgent` | `ARCA_THINKING_MODEL` y las de la fase 1 |
+| 4 | `agent.react_agent.ReActAgent` | `ARCA_THINKING_MODEL`, `ARCA_AGENT_*` y las de la fase 1 |
 
 Rellenad también `ARCA_TEAM` y `ARCA_DOMAIN` en `.env`: salen en `/health` y me ayudan a
 saber a quién estoy corrigiendo.
