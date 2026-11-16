@@ -4,7 +4,8 @@
   off. It is the control: same weights the RLM started from, nothing trained.
 * ``rlm``: the same Qwen3-0.6B with the GRPO LoRA of phase 1 merged in. Its thinking stays on,
   because ``<think>`` is the format it was trained to write.
-* ``thinking``: a larger model in thinking mode (default ``Qwen/Qwen3-1.7B``).
+* ``thinking``: a larger model in thinking mode (default ``Qwen/Qwen3-4B``, the phase-2 model;
+  Qwen3-1.7B was tried first, see docs/EXPERIMENTS.md).
 
 Configuration (all optional): ``ARCA_RLM_BASE_MODEL`` (base brain; default the base model of
 the adapter), ``ARCA_RLM_ADAPTER`` (the RLM LoRA), ``ARCA_THINKING_MODEL``,
@@ -55,11 +56,12 @@ def brain_specs() -> dict[str, BrainSpec]:
         "base": BrainSpec(
             "base", small, thinking=_flag("ARCA_AGENT_BASE_THINKING", "0"), max_new_tokens=budget
         ),
-        "rlm": BrainSpec("rlm", small, adapter=adapter, thinking=True, max_new_tokens=budget),
-        # Thinking traces are long: twice the budget so they do not cut the tool call.
+        # Brains that think get twice the budget: with 1024 tokens the RLM often had not closed
+        # </think> yet, and an unfinished thought has no tool call.
+        "rlm": BrainSpec("rlm", small, adapter=adapter, thinking=True, max_new_tokens=2 * budget),
         "thinking": BrainSpec(
             "thinking",
-            os.environ.get("ARCA_THINKING_MODEL", "Qwen/Qwen3-1.7B"),
+            os.environ.get("ARCA_THINKING_MODEL", "Qwen/Qwen3-4B"),
             thinking=True,
             max_new_tokens=2 * budget,
         ),

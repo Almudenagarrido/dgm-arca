@@ -1390,3 +1390,100 @@ las cifras de la fase 3 no cambian.
 Ficheros: `rlm/data/test.jsonl` y `test_ood.jsonl` (nuevos), `test_v1.jsonl` y
 `test_ood_v1.jsonl` (antiguos), `reports/eval_test*.json` (nuevos) y `eval_test*_v1.json`
 (antiguos), `reports/phase1_data_audit.json`, `logs/eval_test_v2.log`.
+
+## Fase 4 · Agente
+
+### 2026-11-16 · Fase 4 · Bucle ReAct, banco de 22 tareas, tres cerebros y ablaciones
+
+**Qué queríamos saber.** Si el bucle ReAct (`agent/react_agent.py`) resuelve tareas que
+necesitan al menos dos herramientas, qué cerebro conviene (base Qwen3-0.6B, nuestro RLM de la
+fase 1 y un modelo con razonamiento) y qué piezas del bucle aportan de verdad.
+
+**Qué hicimos.**
+- Banco `agent/bench/tasks.jsonl` (22 tareas, `agent/bench/build_tasks.py`): 9 de clasificación
+  + multa o cálculo, 4 de clasificación + texto oficial, 4 de base de conocimiento (RAG de la
+  fase 3) + otra herramienta, 1 de informe PDF y 4 imposibles (norma ISO inexistente, artículo
+  114, dato que no está en el corpus…). Las cifras esperadas las calculan el motor y
+  `compute_max_fine`, no nosotras. La comprobación es automática (`number` entiende «15
+  millones», «15.000.000 EUR»; `all`/`any` para tareas con varias partes).
+- Comando: `uv run python -m agent.evaluate --brains base rlm thinking --out
+  reports/phase4_eval_<nombre>.json`, greedy, `max_steps=10`, presupuesto de memoria de 12 000
+  tokens. Cerebros: `base` = Qwen3-0.6B sin razonamiento; `rlm` = 0.6B + LoRA GRPO fusionada,
+  con razonamiento; `thinking` = Qwen3-4B con razonamiento (y Qwen3-1.7B como variante).
+- Tres versiones del bucle:
+  - **v0**: prompt ReAct de las transparencias con las herramientas en texto.
+  - **v1**: plantilla nativa de herramientas de Qwen (`tools=`), parser tolerante
+    (`Action: nombre {json}`, `{"function": …}`), detección de esquema copiado, ejemplo resuelto
+    (few-shot), guarda de evidencia (un `final_answer` antes de ver ningún resultado se rechaza
+    una vez), detección de bucles y reglas del dominio.
+  - **v2**: v1 + tabla de códigos del Anexo III en el prompt, aviso de que los hechos del
+    ejemplo son solo del ejemplo, «grupos de hechos» que solo funcionan juntos en
+    `classify_risk`, y `top_k` mínimo de 5 en la base de conocimiento.
+- Ablaciones sobre v2 con el 4B, cambiando una variable de entorno cada vez.
+
+**Incidente.** La primera tanda lanzó v0 y v1 a la vez en la partición MIG de 16 GB y casi
+todo `rlm`/`thinking` de v0 acabó en `CUDA out of memory` (también una tarea de `base` en v0 y
+otra en v1). v0 solo vale para `base`. Desde entonces las evaluaciones se lanzan en cadena,
+una detrás de otra.
+
+**Qué pasó.**
+
+| versión / cerebro | éxito | herram. requeridas | pasos | tokens | s/tarea |
+|---|---|---|---|---|---|
+| v0 base | 0,05 | 0,27 | 3,9 | 22 991 | 24 |
+| v1 base | 0,18 | 0,18 | 2,7 | 16 142 | 26 |
+| v1 rlm | 0,09 | 0,05 | 3,1 | 22 207 | 45 |
+| v1 thinking (4B) | 0,59 | 0,64 | 3,0 | 18 588 | 48 |
+| **v2 base** | 0,05 | 0,00 | 2,4 | 15 534 | 8 |
+| **v2 rlm** | 0,00 | 0,00 | 2,9 | 20 986 | 33 |
+| **v2 thinking (4B)** | **0,86** | 0,64 | 3,1 | 22 248 | 59 |
+| v2 thinking (1.7B) | 0,36 | 0,45 | 2,8 | 19 704 | 21 |
+
+Ablaciones (v2, Qwen3-4B; con 22 tareas, una tarea son 4,5 puntos):
+
+| cambio | éxito | herram. | pasos | comentario |
+|---|---|---|---|---|
+| v2 completa | 0,86 | 0,64 | 3,1 | |
+| sin ejemplo resuelto | 0,86 | 0,68 | 3,4 | 6 respuestas sin `final_answer` (1 con él) |
+| sin guarda de evidencia | 0,86 | 0,64 | 3,0 | la guarda no llega a dispararse con el 4B |
+| parser estricto | 0,86 | 0,64 | 3,1 | idéntico: el 4B siempre usa `<tool_call>` |
+| prompt ReAct en texto | **0,68** | 0,45 | 3,3 | las multas caen de 1,00 a 0,57 |
+| base sin ejemplo | 0,05 | 0,09 | 4,7 | 9 bucles detectados de 22 |
+
+- *Éxito > herramientas requeridas* (0,86 frente a 0,64): el 4B a veces hace la resta o la
+  multiplicación de cabeza en lugar de llamar a `calculator` y acierta igual. Lo contamos como
+  éxito porque la respuesta es correcta, pero no cumple la tarea tal y como estaba diseñada.
+- *Fallos que quedan del 4B (v2):* `text-04` omite el hecho `annex_iii_use_cases: ["4.a"]`, la
+  excepción del Art. 6.3 no tiene nada que eximir y el motor devuelve «mínimo» sin artículo, así
+  que la respuesta no cita el 6.3.a. En `kb-02` la generación se corta dentro del `<think>`
+  (2048 tokens) dos veces y la «respuesta» era el propio razonamiento. Hemos corregido eso:
+  ahora un `<think>` sin cerrar no cuenta como respuesta (test
+  `test_plain_answer_drops_unfinished_thinking`), aunque la tarea sigue fallando. En
+  `impossible-03` la base de conocimiento devuelve pasajes por encima del umbral, y el modelo
+  se inventa una «ISO/IEC 23894 obligatoria» en vez de decir que no existe.
+- *Base y RLM no sirven como cerebro del agente.* El 0.6B base con el ejemplo resuelto llama a
+  `classify_risk` y después **copia la respuesta final del ejemplo** («15.000.000 EUR (Art.
+  99.4)») sin llamar a `compute_max_fine`. Sin el ejemplo entra en bucles. El RLM está peor: el
+  GRPO de la fase 1 lo entrenó para cerrar con `<answer>…</answer>` y ha perdido la costumbre de
+  llamar herramientas (8 bucles detectados y ninguna tarea resuelta en v2). La caída de base de
+  v1 (0,18) a v2 (0,05) coincide con un prompt unos 600 tokens más largo (la tabla del
+  Anexo III), que al 0.6B le cuesta más seguir.
+- *Prompt nativo frente a texto:* es el cambio que más pesa con el 4B (+18 puntos). Con las
+  herramientas en texto, el modelo rellena peor los argumentos de `compute_max_fine` y
+  `calculator`.
+
+**Qué concluimos.**
+- El cerebro por defecto del agente es **Qwen3-4B con razonamiento** (`ARCA_THINKING_MODEL`).
+  El 1.7B se queda en 0,36 y los modelos de 0.6B no llegan.
+- **Cuidado con el 0,86:** la tabla del Anexo III y los grupos de hechos se escribieron después
+  de ver los fallos de v1 *en este mismo banco*. Es un ajuste sobre el test, y la cifra de v2
+  es optimista. Lo honesto es dar v1 (0,59) como cota inferior y v2 como cota superior hasta
+  medir el agente con tareas nuevas que no hayamos visto.
+- El parser tolerante y la guarda de evidencia no mejoran al 4B. Se quedan porque son
+  salvaguardas para cerebros pequeños (v0 → v1 con `base`) y porque el enunciado pide
+  robustez frente a salidas mal formadas.
+- Pendiente: comparación con `smolagents.CodeAgent`, prueba con una herramienta rota y medir el
+  efecto de la compresión de memoria.
+
+Ficheros: `reports/phase4_eval_{v0,v1,v2}.json`, `reports/phase4_eval_abl_*.json`,
+`reports/phase4_eval_thinking_1.7b.json`.

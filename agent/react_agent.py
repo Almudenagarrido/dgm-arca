@@ -25,6 +25,9 @@ Decisions of the loop, each one a configurable guardrail:
   timeouts all go back to the model as ``{"error": ...}`` so it can fix the call.
 * **No action.** A step without a tool call gets one reminder of the format. A second one is
   accepted as the answer (``stop_reason="plain_answer"``), flagged in the response.
+* **Evidence before answering.** ``ARCA_AGENT_REQUIRE_EVIDENCE=1`` (default): a
+  ``final_answer`` before any tool has returned a result is sent back once (``NO_EVIDENCE``);
+  the second one is accepted. ``ARCA_AGENT_FEWSHOT=1`` (default) adds one worked example.
 * **Loop detection.** The same call with the same arguments is not executed again: the model
   is shown the earlier result. The third identical call, or the third identical malformed
   message, stops the loop (``stop_reason="loop_detected"``).
@@ -48,7 +51,13 @@ from typing import Any
 
 from agent.brains import Brain, BrainSpec, brain_specs
 from agent.memory import ConversationMemory
-from agent.prompts import AGENT_DOMAIN_RULES, REACT_SYSTEM_PROMPT, SUMMARY_PROMPT
+from agent.prompts import (
+    AGENT_DOMAIN_RULES,
+    FEW_SHOT_EXAMPLE,
+    REACT_SYSTEM_PROMPT,
+    SUMMARY_PROMPT,
+    annex_iii_table,
+)
 from api.schemas import AgentAction, AgentResponse, AgentStep, ToolCallRecord
 from rlm.rewards import extract_answer
 from tool_use.executor import CONFIRMATION_REFUSED
@@ -75,6 +84,12 @@ REPEATED_CALL = (
 SCHEMA_COPIED = (
     "you copied the definition (JSON Schema) of {name} instead of calling it. Write "
     '{{"name": "{name}", "arguments": {{...}}}} with the values of the arguments.'
+)
+NO_EVIDENCE = (
+    "Not accepted yet: you have not used any tool, so this answer is not based on any result. "
+    "If the task needs a classification, a fine, an article or the knowledge base, call that "
+    "tool first. If it really needs no tool, or the information is not available, call "
+    "final_answer again."
 )
 EXTRA_CALLS_IGNORED = "\n(Only the first tool call was executed: call one tool per step.)"
 MAX_STEPS_MESSAGE = "No he podido completar la tarea en {max_steps} pasos."
@@ -106,10 +121,12 @@ def search_knowledge_base(query: str, top_k: int = 5) -> str:
 
     Args:
         query: What to look for, phrased as a question.
-        top_k: How many passages to return (1 to 8).
+        top_k: How many passages to return (5 to 8).
     """
     pipeline = knowledge_base()
-    hits = pipeline.retrieve(query, top_k=max(1, min(top_k, 8)), retriever="hybrid")
+    # At least 5: the retrieval of phase 3 was measured at k=5 (hit@5 0.84); asking for 3 the
+    # brain missed the passage with the answer (docs/EXPERIMENTS.md).
+    hits = pipeline.retrieve(query, top_k=max(5, min(top_k, 8)), retriever="hybrid")
     if not hits:
         return "No passages found."
     passages = "\n\n".join(
@@ -197,6 +214,8 @@ def _plain_answer(text: str) -> str:
     answer = extract_answer(text)
     if answer is not None:
         return answer
+    # A generation cut off while thinking has no </think>: that reasoning is not an answer.
+    text = re.sub(r"<think>.*?(?:</think>|\Z)", "", text, flags=re.DOTALL)
     return re.sub(r"^\s*(Thought|Final Answer|Answer):\s*", "", text.strip()).strip()
 
 
@@ -228,6 +247,10 @@ class ReActAgent:
         default_factory=lambda: os.environ.get("ARCA_AGENT_PROMPT", "native").strip().lower()
     )
     lenient_parse: bool = field(default_factory=lambda: _flag("ARCA_AGENT_LENIENT_PARSE", "1"))
+    few_shot: bool = field(default_factory=lambda: _flag("ARCA_AGENT_FEWSHOT", "1"))
+    require_evidence: bool = field(
+        default_factory=lambda: _flag("ARCA_AGENT_REQUIRE_EVIDENCE", "1")
+    )
     specs: dict[str, BrainSpec] = field(default_factory=dict)
     brains: dict[str, Any] = field(default_factory=dict)
 
@@ -260,7 +283,13 @@ class ReActAgent:
             else self.registry.render_for_prompt()
         )
         react = REACT_SYSTEM_PROMPT.format(max_steps=max_steps, tools_description=tools)
-        return f"{react}\n{AGENT_DOMAIN_RULES}"
+        parts = [
+            react,
+            AGENT_DOMAIN_RULES,
+            annex_iii_table(),
+            FEW_SHOT_EXAMPLE if self.few_shot else "",
+        ]
+        return "\n".join(p for p in parts if p)
 
     def generate(self, messages: list[dict], brain: str) -> tuple[str, int]:
         """One generation with the chosen brain: (text, tokens processed)."""
@@ -330,6 +359,8 @@ class ReActAgent:
         steps: list[AgentStep] = []
         tokens = 0
         nudged = False
+        evidence = False  # has any tool other than final_answer returned a result?
+        challenged = False
         seen: Counter[str] = Counter()
         previous: dict[str, str] = {}
 
@@ -384,7 +415,24 @@ class ReActAgent:
                 if seen[key] == 2:
                     observation = REPEATED_CALL.format(name=call.name, previous=previous[key])
                 else:
+                    if (
+                        call.name == "final_answer"
+                        and self.require_evidence
+                        and not (evidence or challenged)
+                    ):
+                        # Answering before looking anything up is how the small brains made up
+                        # labels and fines. Ask once; a second final_answer is accepted (a task
+                        # may really need no tool, or be impossible).
+                        challenged = True
+                        seen[key] -= 1
+                        steps.append(
+                            AgentStep(thought=thought, action=action, observation=NO_EVIDENCE)
+                        )
+                        memory.add("assistant", content)
+                        memory.add("tool", NO_EVIDENCE, name="final_answer")
+                        continue
                     record = self.execute(call.name, call.arguments)
+                    evidence = evidence or (record.ok and call.name != "final_answer")
                     if record.ok and call.name == "final_answer":
                         steps.append(AgentStep(thought=thought, action=action))
                         return finish(str(record.result), step + 1, "final_answer")

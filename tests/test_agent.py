@@ -238,3 +238,44 @@ def test_repeated_malformed_message_stops_the_loop():
     agent, _ = make_agent(['<tool_call>{"no": "name"}</tool_call>'] * 3)
     response = agent.run("x", brain="fake")
     assert response.stop_reason == "loop_detected" and response.n_steps == 3
+
+
+def test_check_answer_reads_spanish_numbers_and_combined_checks():
+    fine = {"check": {"type": "number", "value": 15_000_000, "tolerance": 1}}
+    for text in ("15.000.000 EUR", "15,000,000 €", "15 millones de euros", "15 M€"):
+        assert check_answer(fine, f"La multa es {text}."), text
+    assert check_answer({"check": {"type": "number", "value": 7.5e6}}, "7,5 millones")
+    assert check_answer({"check": {"type": "number", "value": 120_000}}, "120.000 EUR")
+    assert not check_answer(fine, "1.500.000 EUR")
+    both = {
+        "check": {"type": "all", "value": [{"type": "contains", "value": "alto"}, fine["check"]]}
+    }
+    assert check_answer(both, "alto riesgo, 15.000.000 EUR")
+    assert not check_answer(both, "alto riesgo, 6.000.000 EUR")
+
+
+def test_final_answer_without_evidence_is_sent_back_once():
+    agent, _ = make_agent(
+        [
+            call("final_answer", answer="inventado"),
+            call("add", a=1, b=1),
+            call("final_answer", answer="2"),
+        ]
+    )
+    response = agent.run("Suma", brain="fake")
+    assert "not used any tool" in response.steps[0].observation
+    assert response.final_answer == "2" and response.n_steps == 3
+
+    agent, _ = make_agent([call("final_answer", answer="No lo sé")] * 2)
+    response = agent.run("Imposible", brain="fake")
+    assert response.final_answer == "No lo sé" and response.n_steps == 2
+
+    agent, _ = make_agent([call("final_answer", answer="x")], require_evidence=False)
+    assert agent.run("x", brain="fake").n_steps == 1
+
+
+def test_plain_answer_drops_unfinished_thinking():
+    from agent.react_agent import _plain_answer
+
+    assert _plain_answer("<think>\nOkay, the user asks about the threshold") == ""
+    assert _plain_answer("<think>hmm</think>\nRespuesta: 100 veces") == "Respuesta: 100 veces"
