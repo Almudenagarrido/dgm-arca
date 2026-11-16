@@ -194,3 +194,22 @@ pendiente del adaptador de la fase 1.
   aparte.
 
 El análisis completo, tarea a tarea, está en `docs/EXPERIMENTS.md`.
+
+## Pendiente (2026-11-16)
+
+- [ ] **Cerebro `rlm`.** Falta el adaptador de la fase 1 en `rlm/weights/final_rlm_lora/`. Cuando
+  esté: `uv run python -m agent.evaluate --bench agent/bench/tasks.jsonl --brains rlm --out
+  reports/phase4_eval.json --resume` (y lo mismo con el prompt de texto y el agente de código),
+  un cerebro por proceso.
+- [ ] **Experimento de memoria.** El banco no la mide: solo hubo una compresión en 80
+  ejecuciones. Hacen falta tareas largas o multi-turno (`session_id`) que superen los 9000 tokens.
+  Comparar la política actual con no comprimir y con resumir siempre.
+- [ ] **Experimento de herramienta rota.** Romper una herramienta a propósito (que lance una
+  excepción, que tarde más que el timeout o que devuelva basura) y ver cómo reacciona el agente.
+- [ ] **Quitar el ejemplo `'4.a'`** de la descripción de `classify_risk`
+  (`tool_use/tools.py:126`): el 1.7B lo copia en 6 de 20 llamadas. Afecta también a `/tools`, así
+  que hay que medir la fase 2 antes y después.
+- [ ] **Reconocer `<nombre_herramienta>{...}</nombre_herramienta>`** como intento de llamada. El
+  0.6B escribe así en 5 tareas y el bucle lo acepta como respuesta final.
+- [ ] Con los resultados de `rlm`: entrada en `docs/EXPERIMENTS.md`, métricas en el `README.md` e
+  informe.
