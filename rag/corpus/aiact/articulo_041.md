@@ -1,0 +1,21 @@
+# Artículo 41. Especificaciones comunes
+
+1. La Comisión podrá adoptar actos de ejecución por los que se establezcan especificaciones comunes para los requisitos establecidos en la sección 2 del presente capítulo o, según corresponda, para las obligaciones establecidas en el capítulo V, secciones 2 y 3, siempre que se hayan cumplido las siguientes condiciones:
+a) la Comisión ha solicitado, de conformidad con el artículo 10, apartado 1, del Reglamento (UE) n.o 1025/2012, a una o varias organizaciones europeas de normalización que elaboren una norma armonizada para los requisitos establecidos en la sección 2 del presente capítulo, o según corresponda, para las obligaciones establecidas en el capítulo V, secciones 2 y 3, y:
+  i) la solicitud no ha sido aceptada por ninguna de las organizaciones europeas de normalización, o
+  ii) las normas armonizadas que responden a dicha solicitud no se han entregado en el plazo establecido de conformidad con el artículo 10, apartado 1, del Reglamento (UE) n.o 1025/2012, o
+  iii) las normas armonizadas pertinentes responden de forma insuficiente a las preocupaciones en materia de derechos fundamentales, o
+  iv) las normas armonizadas no se ajustan a la solicitud, y
+b) no se ha publicado en el Diario Oficial de la Unión Europea ninguna referencia a normas armonizadas que regulen los requisitos establecidos en la sección 2 del presente capítulo, o según proceda, las obligaciones a que se refiere el capítulo V, secciones 2 y 3, de conformidad con el Reglamento (UE) n.o 1025/2012 y no se prevé la publicación de tal referencia en un plazo razonable.
+Al elaborar las disposiciones comunes, la Comisión consultará al foro consultivo a que se refiere el artículo 67.
+Los actos de ejecución a que se refiere el párrafo primero del presente apartado se adoptarán de conformidad con el procedimiento de examen contemplado en el artículo 98, apartado 2.
+
+2. Antes de elaborar un proyecto de acto de ejecución, la Comisión informará al comité a que se refiere el artículo 22 del Reglamento (UE) n.o 1025/2012 de que considera que se cumplen las condiciones establecidas en el apartado 1 del presente artículo.
+
+3. Se presumirá que los sistemas de IA de alto riesgo o los modelos de IA de uso general que sean conformes con las especificaciones comunes a que se refiere el apartado 1, o partes de dichas especificaciones, son conformes con los requisitos establecidos en la sección 2 del presente capítulo o, según corresponda, para cumplir con las obligaciones a que se refiere el capítulo V, secciones 2 y 3, en la medida en que dichas especificaciones comunes contemplen esos requisitos o esas obligaciones.
+
+4. Cuando una norma armonizada sea adoptada por una organización europea de normalización y propuesta a la Comisión con el fin de publicar su referencia en el Diario Oficial de la Unión Europea, la Comisión evaluará la norma armonizada de conformidad con el Reglamento (UE) n.o 1025/2012. Cuando la referencia a una norma armonizada se publique en el Diario Oficial de la Unión Europea, la Comisión derogará los actos de ejecución a que se refiere el apartado 1, o las partes de dichos actos que contemplen los mismos requisitos establecidos en la sección 2 del presente capítulo o, según corresponda, las mismas obligaciones establecidas en el capítulo V, secciones 2 y 3.
+
+5. Cuando los proveedores de sistemas de IA de alto riesgo o los modelos de IA de uso general no cumplan las especificaciones comunes mencionadas en el apartado 1, justificarán debidamente que han adoptado soluciones técnicas que cumplan los requisitos a que se refiere la sección 2 del presente capítulo o, según corresponda, cumplan con las obligaciones establecidas en el capítulo V, secciones 2 y 3, en un nivel como mínimo equivalente a aquellos.
+
+6. Cuando un Estado miembro considere que una especificación común no cumple plenamente los requisitos establecidos en la sección 2, o, según corresponda, no cumple con las obligaciones establecidas en el capítulo V, secciones 2 y 3, informará de ello a la Comisión con una explicación detallada. La Comisión evaluará dicha información y, en su caso, modificará el acto de ejecución por el que se establece la especificación común de que se trate.

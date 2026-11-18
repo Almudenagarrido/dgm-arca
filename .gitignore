@@ -9,11 +9,8 @@ dist/
 # Entornos y secretos
 .env
 
-# Pesos, datos, índices y cachés de modelos
-rlm/weights/*
-!rlm/weights/.gitkeep
-rag/corpus/*
-!rag/corpus/.gitkeep
+# Pesos, índices, cachés y resultados (los de la v1 están en Hugging Face)
+rlm/weights/
 rag/index/
 outputs/
 logs/
@@ -21,17 +18,7 @@ runs/
 wandb/
 .cache/
 hf_cache/
-
-# Resultados y gráficas grandes
-reports/*.png
-reports/*.csv
-
-# LaTeX (el .tex y el .pdf sí se versionan)
-*.aux
-*.log
-*.out
-*.toc
-*.synctex.gz
+reports/
 
 # Herramientas
 .pytest_cache/
@@ -41,4 +28,3 @@ reports/*.csv
 # Sistema
 .DS_Store
 Thumbs.db
-reports/assessments/

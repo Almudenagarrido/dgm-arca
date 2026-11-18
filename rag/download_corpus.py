@@ -1,6 +1,6 @@
 """Build ``rag/corpus/`` from official EU sources, as Markdown files that ``rag/ingest.py`` reads.
 
-The corpus is not in git (it is ~2 MB and regenerable). Run::
+The corpus is versioned in git (~2 MB); this script regenerates it from the sources. Run::
 
     uv run python -m rag.download_corpus
 

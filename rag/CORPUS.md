@@ -1,7 +1,9 @@
-# Corpus de la fase 3
+# Corpus
 
-El corpus no está en git: `uv run python -m rag.download_corpus` lo regenera en `rag/corpus/`
-en menos de un minuto (unos 2 MB de Markdown). Todo procede de fuentes oficiales de la UE.
+El corpus está versionado en `rag/corpus/` (unos 2 MB de Markdown, descargado el 3-nov-2026).
+`uv run python -m rag.download_corpus` lo regenera desde las fuentes en menos de un minuto; si
+la Comisión cambia los borradores, la versión de referencia es la de git. Todo procede de fuentes
+oficiales de la UE. Cómo se extrajo: [`docs/CORPUS_EXTRACCION.md`](../docs/CORPUS_EXTRACCION.md).
 
 | Carpeta | Documentos | Fuente | Idioma |
 |---|---|---|---|

@@ -1,0 +1,23 @@
+# Artículo 73. Notificación de incidentes graves
+
+1. Los proveedores de sistemas de IA de alto riesgo introducidos en el mercado de la Unión notificarán cualquier incidente grave a las autoridades de vigilancia del mercado de los Estados miembros en los que se haya producido dicho incidente.
+
+2. La notificación a que se refiere el apartado 1 se efectuará inmediatamente después de que el proveedor haya establecido un vínculo causal entre el sistema de IA y el incidente grave o la probabilidad razonable de que exista dicho vínculo y, en cualquier caso, a más tardar quince días después de que el proveedor o, en su caso, el responsable del despliegue, tengan conocimiento del incidente grave. El plazo para la notificación a que se refiere el párrafo primero tendrá en cuenta la magnitud del incidente grave.
+
+3. No obstante lo dispuesto en el apartado 2 del presente artículo, en caso de una infracción generalizada o de un incidente grave tal como se define en el artículo 3, punto 49, letra b), la notificación a que se refiere el apartado 1 del presente artículo se realizará de manera inmediata y a más tardar dos días después de que el proveedor o, en su caso, el responsable del despliegue tenga conocimiento del incidente.
+
+4. No obstante lo dispuesto en el apartado 2, en caso de fallecimiento de una persona, la notificación se efectuará de manera inmediata después de que el proveedor o el responsable del despliegue haya establecido —o tan pronto como sospeche— una relación causal entre el sistema de IA de alto riesgo y el incidente grave, en un plazo no superior a diez días a contar de la fecha en la que el proveedor o, en su caso, el responsable del despliegue tenga conocimiento del incidente grave.
+
+5. Cuando sea necesario para garantizar la notificación en tiempo oportuno, el proveedor o, en su caso, el responsable del despliegue podrá presentar inicialmente una notificación incompleta, seguida de una notificación completa.
+
+6. Después de notificar un incidente grave con arreglo al apartado 1, el proveedor realizará sin demora las investigaciones necesarias en relación con el incidente grave y el sistema de IA afectado. Esto incluirá una evaluación de riesgos del incidente y las medidas correctoras. El proveedor cooperará con las autoridades competentes y, en su caso, con el organismo notificado afectado durante las investigaciones a que se refiere el párrafo primero, y no emprenderá acción alguna que suponga la modificación del sistema de IA afectado de un modo que pueda repercutir en cualquier evaluación posterior de las causas del incidente sin haber informado antes de dicha acción a las autoridades competentes.
+
+7. Tras la recepción de una notificación relativa a un incidente grave a que se refiere el artículo 3, punto 49, letra c), la autoridad de vigilancia del mercado pertinente informará a las autoridades u organismos públicos nacionales a que se refiere el artículo 77, apartado 1. La Comisión elaborará orientaciones específicas para facilitar el cumplimiento de las obligaciones establecidas en el apartado 1 del presente artículo. Dichas orientaciones se publicarán a más tardar el 2 de agosto de 2025 y se evaluarán periódicamente.
+
+8. La autoridad de vigilancia del mercado adoptará medidas adecuadas tal como se establece en el artículo 19 del Reglamento (UE) 2019/1020, en un plazo de siete días a partir de la fecha en que reciba la notificación a que se refiere el apartado 1 del presente artículo, y seguirá los procedimientos de notificación previstos en dicho Reglamento.
+
+9. En el caso de los sistemas de IA de alto riesgo a que se refiere el anexo III, introducidos en el mercado o puestos en servicio por proveedores que estén sujetos a instrumentos legislativos de la Unión por los que se establezcan obligaciones de información equivalentes a las establecidas en el presente Reglamento, la notificación de incidentes graves se limitará a los mencionados en el artículo 3, punto 49, letra c).
+
+10. En el caso de los sistemas de IA de alto riesgo que sean componentes de seguridad de dispositivos, o que en sí mismos sean dispositivos, regulados por los Reglamento (UE) 2017/745 y (UE) 2017/746, la notificación de incidentes graves se limitará a los mencionados en el artículo 3, punto 49, letra c), del presente Reglamento, y se hará a la autoridad nacional competente elegida para tal fin por los Estados miembros en los que se haya producido el incidente.
+
+11. Las autoridades nacionales competentes informarán de inmediato a la Comisión de todo incidente grave, independientemente de han adoptado medidas al respecto, de conformidad con el artículo 20 del Reglamento (UE) 2019/1020.

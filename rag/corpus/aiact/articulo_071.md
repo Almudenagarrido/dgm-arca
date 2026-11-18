@@ -1,0 +1,13 @@
+# Artículo 71. Base de datos de la UE para los sistemas de IA de alto riesgo enumerados en el ANEXO III
+
+1. La Comisión, en colaboración con los Estados miembros, creará y mantendrá una base de datos de la UE que contendrá la información mencionada en los apartados 2 y 3 del presente artículo en relación con los sistemas de IA de alto riesgo a que se refiere el artículo 6, apartado 2, que estén registrados con arreglo a los artículos 49 y 60 y los sistemas de IA que no se consideren de alto riesgo en virtud del artículo 6, apartado 3, y que estén registrados con arreglo al artículo 6, apartado 4, y al artículo 49. La Comisión consultará a los expertos pertinentes a la hora de fijar las especificaciones funcionales de dicha base de datos y al Consejo de IA a la hora de actualizarlas.
+
+2. Los datos enumerados en el anexo VIII, secciones A y B, serán introducidos en la base de datos de la UE por el proveedor o, en su caso, por el representante autorizado.
+
+3. Los datos enumerados en el anexo VIII, sección C, serán introducidos en la base de datos de la UE por el responsable del despliegue que sea una autoridad pública, órgano u organismo, o actúe en su nombre, de conformidad con el artículo 49, apartados 3 y 4.
+
+4. A excepción de la sección a que se refieren el artículo 49, apartado 4, y el artículo 60, apartado 4, letra c), la información presente en la base de datos de la UE y registrada de conformidad con lo dispuesto en el artículo 49 será accesible y estará a disposición del público de manera sencilla. Debe ser fácil navegar por la información y esta ha de ser legible por máquina. Únicamente podrán acceder a la información registrada de conformidad con el artículo 60 las autoridades de vigilancia de mercado y la Comisión, a menos que el proveedor potencial o el proveedor hayan dado su consentimiento a que la información también esté accesible para el público.
+
+5. La base de datos de la UE únicamente contendrá datos personales en la medida en que sean necesarios para la recogida y el tratamiento de información de conformidad con el presente Reglamento. Dicha información incluirá los nombres y datos de contacto de las personas físicas responsables del registro de sistema y que cuenten con autoridad legal para representar al proveedor o al responsable del despliegue, según proceda.
+
+6. La Comisión será la responsable del tratamiento de la base de datos de la UE, y proporcionará apoyo técnico y administrativo adecuado a los proveedores, proveedores potenciales y responsables del despliegue. La base de datos de la UE cumplirá los requisitos de accesibilidad aplicables.
