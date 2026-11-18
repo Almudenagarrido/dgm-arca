@@ -25,17 +25,4 @@ uv run python -m rag.download_corpus              # sobrescribe rag/corpus/
 uv run python -m rag.download_corpus --out /tmp/c # o en otra carpeta, para comparar
 ```
 
-## La versión anterior (v1)
 
-Todo lo anterior al reinicio (fases 0 a 4: motor de reglas, SFT + GRPO, tool use, RAG y agente)
-sigue en git:
-
-| Qué | Dónde |
-|---|---|
-| Código completo de la v1 | etiqueta `arca-v1` (`git checkout arca-v1`) |
-| Variante de fase 4 con el bench de 22 tareas y `docs/RESUMEN.md` | rama `fase4-victoria` |
-| Traducción al inglés en curso | rama `english` |
-| Pesos LoRA de la v1 (GRPO final y SFT), sin checkpoints intermedios | Hugging Face: `arca-mia/arca-v1-rlm-grpo`, `arca-mia/arca-v1-rlm-sft` (privados, **pendiente de subir**) |
-| Logs, informes e índice del RAG que no estaban en git | Hugging Face (dataset): `arca-mia/arca-v1-artefactos` (privado, **pendiente de subir**) |
-
-Los pesos y artefactos de la v2 irán en repos aparte de la misma organización (`arca-mia/arca-v2-*`).
