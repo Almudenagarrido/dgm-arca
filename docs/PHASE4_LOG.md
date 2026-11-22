@@ -73,6 +73,38 @@ sistema.
 no llene la memoria. Para medirla hacen falta tareas largas o multi-turno, comparando esta
 política con no comprimir y con resumir siempre. *(Pendiente.)*
 
+### 2026-11-22 · Banco de 20 tareas y evaluación (`agent/bench/`, `agent/evaluate.py`)
+
+**Qué:** 20 tareas en español que obligan a encadenar al menos dos herramientas distintas, cada
+una con una comprobación automática de la respuesta final.
+
+| Familia | Nº | Herramientas | Ejemplo |
+|---|---|---|---|
+| `classify-fine` | 5 | clasificar + multa | voz de teleoperadores para detectar estrés (800 M€) |
+| `classify-lookup` | 4 | clasificar + citar la ley | detector de mentiras en entrevistas de asilo |
+| `kb-*` | 5 | RAG + calculadora / multa / clasificar | ¿desde cuándo se aplica el reglamento? → meses |
+| `classify-report` | 2 | clasificar + informe PDF | triaje en urgencias |
+| `fine-calc` | 2 | dos multas + calculadora | diferencia entre dos multas máximas |
+| `impossible` | 2 | — | el agente debe responder «No puedo responder» |
+
+**Decisiones:**
+- **Valores esperados comprobados**, no supuestos: las etiquetas y las multas se calcularon con el
+  motor de reglas y la herramienta de multas; las fechas y umbrales salen del reglamento (Art. 4,
+  6.1, 99 y 113).
+- **Comprobaciones tolerantes al formato:** un importe vale escrito como 56.000.000, 56,000,000,
+  56000000 o «56 millones», pero no 156.000.000 ni 5.600.000. Así no se penaliza al agente por la
+  forma, solo por el contenido.
+- **Tareas imposibles** para medir si el agente se inventa respuestas.
+- **Métricas** (`evaluate.py`): tasa de éxito con intervalo de Wilson al 95 % (con 20 tareas los
+  intervalos son anchos y hay que decirlo al comparar), % de tareas que usan todas las
+  herramientas requeridas, pasos, tokens y segundos medios, motivos de parada y éxito por familia.
+  Se guarda tras cada tarea y se puede reanudar (`--resume`).
+
+**Verificación:** 6 tests sin modelo (`tests/test_bench.py`): las 20 respuestas de referencia
+pasan su comprobación, responder «No puedo responder» a todo no pasa ninguna tarea posible, los
+importes aceptan las formas habituales y rechazan las parecidas, y el resumen y el intervalo de
+Wilson se calculan bien.
+
 ---
 
 ## Etapa 2 · Proyecto final
