@@ -55,7 +55,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 # Add each phase folder here when it is created (rlm, agent, smoke...).
-packages = ["api", "rag", "tool_use"]
+packages = ["api", "rag", "tool_use", "agent"]
 
 [tool.uv]
 default-groups = ["dev"]
