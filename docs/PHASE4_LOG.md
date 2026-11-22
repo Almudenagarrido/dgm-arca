@@ -153,6 +153,23 @@ texto); y comparte la memoria entre peticiones de una misma sesión.
 **Pendiente:** conectar en `connectors.py` las herramientas de la fase 2 y el retriever de la
 fase 3, y probar con los modelos reales.
 
+### 2026-11-22 · Visor de trazas (`agent/ui.py`)
+
+**Qué:** una página web (Gradio) donde se escribe una tarea, se elige el cerebro y se ve cada paso
+del agente como una tarjeta de color: pensamiento (morado), acción con sus argumentos (naranja),
+observación (verde, o roja si es un error) y respuesta final. Arriba, el modelo, los pasos, los
+tokens, el motivo de parada y si tuvo éxito. Cumple el mínimo de la traza visible y es la demo.
+
+**Decisiones:**
+- **Habla con la API por HTTP**, en vez de llamar al agente directamente, para enseñar exactamente
+  lo que devuelve `POST /agent`, que es lo que se evalúa.
+- **Ejemplos precargados** para la demo y campo de **sesión** para enseñar el multi-turno.
+- Funciona detrás del proxy de code-server (`ARCA_UI_ROOT_PATH`) y puede dar un enlace público
+  temporal (`ARCA_UI_SHARE=1`).
+
+**Verificación:** 2 tests (`tests/test_ui.py`): se pintan todos los pasos y la respuesta, los
+errores salen en rojo y el texto se escapa (una respuesta con HTML no se ejecuta en la página).
+
 ---
 
 ## Etapa 2 · Proyecto final
