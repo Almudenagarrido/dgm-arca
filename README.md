@@ -47,6 +47,9 @@ razonamiento entre `<think>…</think>` y después da la etiqueta y el artículo
 `<answer>…</answer>`. Se sigue el camino de DeepSeek-R1 a pequeña escala: arranque en frío con
 trazas de un profesor (SFT) y después aprendizaje por refuerzo con recompensas verificables (GRPO).
 
+Cada prueba y cada decisión, con sus cifras, está en el cuaderno
+[`docs/EXPERIMENTS.md`](docs/EXPERIMENTS.md).
+
 ### Cómo se construye
 
 ```
@@ -69,7 +72,8 @@ comparta ninguna. El OOD es de educación, un dominio que no aparece en el entre
 
 `rlm/distill.py` pide a Qwen3-8B 4000 trazas y se queda con las que tienen el formato, la
 etiqueta y el artículo correctos, que son el 77,5 %. Como mucho se guardan 2 por problema, para
-que los fáciles no dominen, y quedan 1758 trazas para el SFT.
+que los fáciles no dominen, y quedan 1758. Un segundo pase con 8 muestras sobre los 79 problemas
+sin ninguna traza válida rescata 44 más, y el SFT se entrena con 1825 trazas de 965 problemas.
 
 GRPO usa tres recompensas (`rlm/rewards.py` y `rlm/aiact_rewards.py`). La de formato comprueba
 que la respuesta respeta `<think>` y `<answer>`. La de exactitud compara la etiqueta con la del
@@ -228,7 +232,7 @@ make lint
 | [`smoke/`](smoke/README.md) | Comprobación del entorno de GPU y GRPO de prueba |
 | [`rag/`](rag/) | Corpus oficial (149 documentos) y script que lo regenera |
 | [`api/`](api/README.md) | API FastAPI con los cuatro endpoints |
-| [`docs/`](docs/) | Cronograma y extracción del corpus |
+| [`docs/`](docs/) | Cuaderno de experimentos de las fases 1 y 2 (`EXPERIMENTS.md`), cronograma y extracción del corpus |
 
 ### El corpus
 

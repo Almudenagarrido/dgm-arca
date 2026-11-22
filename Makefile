@@ -18,9 +18,8 @@ lock: ## Regenera uv.lock tras cambiar pyproject.toml
 test: ## Ejecuta los tests
 	$(UV) run pytest
 
-audit: ## Audita los datos de la fase 1 y el conjunto dorado de la fase 3
+audit: ## Audita los datos de la fase 1
 	$(UV) run python -m rlm.audit_data --out reports/phase1_data_audit.json
-	$(UV) run python -m rag.audit_gold --out reports/phase3_gold_audit.json
 
 lint: ## Comprueba estilo con ruff
 	$(UV) run ruff check .
@@ -42,12 +41,6 @@ smoke-dry: ## Prueba de instalación en CPU con un modelo diminuto (~1 min)
 api: ## Levanta la API en local con recarga automática
 	$(UV) run uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
 
-enunciado: ## Recompila docs/enunciado.pdf a partir del .tex
-	cd docs && pdflatex -interaction=nonstopmode enunciado.tex >/dev/null
-	cd docs && pdflatex -interaction=nonstopmode enunciado.tex >/dev/null
-	cd docs && rm -f enunciado.aux enunciado.log enunciado.out
-	@echo "docs/enunciado.pdf actualizado"
-
 build: ## Construye la imagen Docker
 	docker compose build
 
@@ -63,4 +56,4 @@ docker-api: ## API dentro del contenedor
 shell: ## Shell interactiva con GPU dentro del contenedor
 	docker compose run --rm train
 
-.PHONY: help setup setup-min lock test audit lint format check-gpu smoke smoke-dry api enunciado build docker-check-gpu docker-smoke docker-api shell
+.PHONY: help setup setup-min lock test audit lint format check-gpu smoke smoke-dry api build docker-check-gpu docker-smoke docker-api shell
