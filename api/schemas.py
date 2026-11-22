@@ -39,7 +39,7 @@ class ReasoningRequest(BaseModel):
         default=None,
         description="Optional ground truth; when given, the response includes the verifier verdict",
     )
-    max_new_tokens: int = Field(default=1024, ge=16, le=8192)
+    max_new_tokens: int = Field(default=1536, ge=16, le=8192)
 
 
 class VerifierVerdict(BaseModel):
@@ -81,6 +81,8 @@ class ToolsResponse(BaseModel):
     tool_calls: list[ToolCallRecord]
     turns: int
     model: str = ""
+    # Optional extra: true when the loop stopped at max_turns before a final answer.
+    max_turns_reached: bool = False
 
 
 # ---------------------------------------------------------------------------- phase 3: /rag
