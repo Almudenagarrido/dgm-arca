@@ -105,6 +105,54 @@ pasan su comprobación, responder «No puedo responder» a todo no pasa ninguna 
 importes aceptan las formas habituales y rechazan las parecidas, y el resumen y el intervalo de
 Wilson se calculan bien.
 
+### 2026-11-22 · El bucle ReAct (`agent/react_agent.py`, `toolbox.py`, `brains.py`)
+
+**Qué:** el bucle piensa → actúa → observa, propio y sin frameworks de agentes, repartido en tres
+piezas con una responsabilidad cada una:
+
+| Fichero | Responsabilidad |
+|---|---|
+| `toolbox.py` | Las herramientas: ejecutarlas por nombre con tiempo máximo y leer las llamadas `<tool_call>` del modelo |
+| `brains.py` | Los cerebros: un modelo de Hugging Face, con o sin el adaptador LoRA de la fase 1 |
+| `react_agent.py` | El bucle, la memoria y las políticas (errores, bucles, confirmación) |
+| `connectors.py` | El único punto que depende de las fases 2 y 3: envuelve sus herramientas y su retriever |
+
+**Decisiones:**
+- **Los tres cerebros** del enunciado: `base` (Qwen3-0.6B sin entrenar), `rlm` (el mismo modelo con
+  nuestro adaptador de la fase 1) y `thinking` (Qwen3-1.7B con razonamiento nativo). `base` y `rlm`
+  son el mismo modelo, así que su comparación aísla el efecto del entrenamiento.
+- **Una acción por paso:** si el modelo escribe varias llamadas, solo se ejecuta la primera y se le
+  avisa. Así cada paso de la traza tiene una acción y `max_steps` cuenta pasos reales.
+- **La generación se corta en `</tool_call>`**, para que el modelo no se invente la observación.
+- **Los errores son observaciones:** herramienta desconocida, argumentos que faltan o sobran, JSON
+  roto, excepción dentro de la herramienta, tiempo agotado o respuesta final vacía. El modelo
+  recibe `Error: ...` y puede corregir; el bucle nunca se rompe por un fallo del modelo.
+- **Tiempo máximo por herramienta:** cada herramienta se ejecuta en un hilo aparte; si no responde
+  a tiempo, el modelo recibe un error de *timeout* y decide qué hacer.
+- **Detección de bucles:** una llamada idéntica a otra anterior no se repite (se devuelve el
+  resultado anterior con un aviso); tras 3 repeticiones se para con `loop_detected`.
+- **Confirmación de efectos secundarios:** el informe PDF solo se genera si la tarea lo pide
+  (política `task`; también `always` y `never`).
+- **Respuesta sin herramienta:** se acepta como respuesta final, pero marcada (`plain_answer`). Si
+  el texto contiene `Action:`, es una llamada mal escrita, no una respuesta, y recibe un error con
+  el formato correcto.
+- **Independiente de las otras fases:** el bucle solo necesita un cerebro que genere texto y una
+  caja de herramientas. Por eso se ha podido construir y probar antes de tener las fases 1-3.
+
+**Extras en la API** (campos opcionales, como permite la plantilla): `session_id` en la petición
+(conversación de varios turnos) y `stop_reason` y `memory_compressions` en la respuesta.
+
+**Verificación:** 14 tests con un cerebro falso que devuelve respuestas preparadas y herramientas
+falsas (`tests/test_react_agent.py`): encadena dos herramientas y para en `final_answer`; se
+recupera de cinco tipos de error; respeta el tiempo máximo y el límite de pasos; no repite
+llamadas y detecta bucles; pide confirmación para el informe; acepta y marca las respuestas sin
+herramienta; rechaza llamadas en prosa; ejecuta solo la primera de varias llamadas; avisa si el
+razonamiento se corta; pasa las herramientas a la plantilla (modo nativo) o al prompt (modo
+texto); y comparte la memoria entre peticiones de una misma sesión.
+
+**Pendiente:** conectar en `connectors.py` las herramientas de la fase 2 y el retriever de la
+fase 3, y probar con los modelos reales.
+
 ---
 
 ## Etapa 2 · Proyecto final

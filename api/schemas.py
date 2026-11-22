@@ -117,6 +117,10 @@ class AgentRequest(BaseModel):
         default="rlm",
         description="Model driving the loop: base model, your phase-1 RLM, or a thinking model",
     )
+    session_id: str | None = Field(
+        default=None,
+        description="Optional: requests with the same id share the agent's memory (multi-turn)",
+    )
 
 
 class AgentAction(BaseModel):
@@ -137,3 +141,10 @@ class AgentResponse(BaseModel):
     succeeded: bool = True
     model: str = ""
     tokens_used: int = 0
+    stop_reason: str = Field(
+        default="",
+        description="final_answer, plain_answer, max_steps or loop_detected",
+    )
+    memory_compressions: int = Field(
+        default=0, description="Times the memory summarised old messages"
+    )
