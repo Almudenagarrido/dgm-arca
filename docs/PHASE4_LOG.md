@@ -36,7 +36,12 @@
 - **Los errores vuelven al modelo** como observación → se corrige, el bucle no se rompe.
 - Tiempo máximo por herramienta, detección de bucles, el PDF solo si se pide.
 - 14 tests con un cerebro falso.
-- `connectors.py` → único punto que depende de las fases 2 y 3.
+
+### Conexión con las fases 2 y 3 · `agent/connectors.py`
+- Las 5 herramientas de Gloria tal cual + `search_knowledge_base` (solo la búsqueda del RAG de
+  Victoria; la respuesta la escribe el agente).
+- Dentro de la API usa el mismo buscador que `/rag` → los modelos se cargan una vez.
+- 4 tests.
 
 ### Visor de trazas · `agent/ui.py`
 - Página con cada paso en colores: pensamiento → acción → observación → respuesta. Es la demo.
@@ -44,6 +49,30 @@
 
 ---
 
+### Primera prueba real (23 nov)
+- Las 4 fases responden (`api/warmup.py`). Caso: banco, modelo de solvencia, 3.000 M.
+- Con `thinking` (1.7B) la multa sale bien (90 M, la calcula la herramienta), pero la
+  clasificación no:
+  - busca un anexo antes de clasificar y se lo inventa (III.4.a, empleo);
+  - llama a `classify_risk` con los 40 datos y **escribe él mismo el resultado**;
+  - el JSON lleva una `}` de más → error → no reintenta → responde con lo inventado.
+- Arreglos en el bucle:
+  - la llamada se lee aunque sobre algo detrás;
+  - reglas nuevas: clasificar antes de citar, poner solo los datos ciertos, reintentar si
+    hay error, nunca responder con algo que no devolvió una herramienta.
+- Con eso ya clasifica primero, pero pone todo a `false` → `riesgo_minimo`, que es incorrecto.
+  → El límite es el tamaño del modelo: traducir una descripción a 40 datos es demasiado para
+  un 1.7B.
+
+---
+
 ## Etapa 2 · Proyecto final
 
-*(A partir del 24.)*
+### Mejora 1 · Cerebro `remote` (modelo grande de la universidad)
+- Limitación → el 1.7B no rellena bien los datos de `classify_risk`.
+- Mejora → cuarto cerebro: el modelo grande del servidor vLLM (el mismo que ya usan `/tools` y
+  `/rag`, con el cliente de Victoria). No ocupa GPU propia.
+- Resultado en el caso del banco, mismo bucle y mismas herramientas:
+  `classify_risk` con solo `["5.b"]` → **alto riesgo, Anexo III.5.b** → multa 90 M → respuesta
+  completa en 3 pasos.
+- Pendiente → medirlo con las 20 tareas frente a `base`, `rlm` y `thinking`.

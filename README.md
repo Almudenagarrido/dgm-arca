@@ -16,7 +16,7 @@ El repositorio se reinició el 18-nov-2026 a partir del corpus oficial (plan en
 | 1 · Razonamiento | `POST /reasoning` | Lista (los pesos se descargan aparte, ver «Pesos») |
 | 2 · Herramientas | `POST /tools` | Lista |
 | 3 · Conocimiento (RAG) | `POST /rag` | Lista |
-| 4 · Agente | `POST /agent` | Pendiente |
+| 4 · Agente | `POST /agent` | Lista (cerebro recomendado: `remote`) |
 
 ---
 
