@@ -129,14 +129,17 @@ def agent(request: AgentRequest):
     return _run(
         "agent",
         backends.agent,
-        lambda a: a.run(request.task, max_steps=request.max_steps, brain=request.brain),
+        lambda a: a.run(request.task, max_steps=request.max_steps, brain=request.brain,
+            session_id=request.session_id),
     )
 
 
 def main() -> None:
     """Entry point for ``uv run arca-api``. Reads ``.env`` first (real env vars win)."""
     load_dotenv()
-    uvicorn.run("api.app:app", host="0.0.0.0", port=int(env("ARCA_API_PORT", "8000")))
+    uvicorn.run("api.app:app", host="0.0.0.0", port=int(env("ARCA_API_PORT", "8000")),
+        root_path=env("ARCA_API_ROOT_PATH", ""),
+    )
 
 
 if __name__ == "__main__":

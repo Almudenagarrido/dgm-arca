@@ -120,9 +120,13 @@ class RagResponse(BaseModel):
 class AgentRequest(BaseModel):
     task: str = Field(..., min_length=1)
     max_steps: int = Field(default=10, ge=1, le=50)
-    brain: Literal["base", "rlm", "thinking"] = Field(
-        default="rlm",
-        description="Model driving the loop: base model, your phase-1 RLM, or a thinking model",
+    brain: Literal["base", "rlm", "thinking", "remote"] = Field(
+        default="remote",
+        description="Model driving the loop: base model, your phase-1 RLM, a thinking model, or the large remote model",
+    )
+    session_id: str | None = Field(
+        default=None,
+        description="Optional: requests with the same id share the agent's memory (multi-turn)",
     )
 
 
@@ -144,3 +148,10 @@ class AgentResponse(BaseModel):
     succeeded: bool = True
     model: str = ""
     tokens_used: int = 0
+    stop_reason: str = Field(
+        default="",
+        description="final_answer, plain_answer, max_steps or loop_detected",
+    )
+    memory_compressions: int = Field(
+        default=0, description="Times the memory summarised old messages"
+    )
