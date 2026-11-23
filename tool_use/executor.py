@@ -22,6 +22,10 @@ Two ways of putting the tools in the prompt, chosen with ``ARCA_TOOLS_PROMPT``:
 In both cases tool results go back as ``role: tool`` messages, which the template wraps in
 ``<tool_response>`` inside a user turn. Configuration (all optional):
 
+* ``ARCA_TOOLS_BACKEND``   ``local`` (default): ``ARCA_TOOLS_MODEL`` on this GPU; ``openai``:
+  an OpenAI-compatible server (``LLM_BASE_URL``, ``LLM_API_KEY``, ``LLM_MODEL``, see
+  ``api/llm.py``). The loop, the parser and the validation are the same; only step 2 runs
+  remotely (``tool_use/remote.py``), and the local model is never loaded.
 * ``ARCA_TOOLS_MODEL``     Hugging Face id (default ``Qwen/Qwen3-4B``)
 * ``ARCA_TOOLS_PROMPT``    ``native`` or ``slides``
 * ``ARCA_TOOLS_THINKING``  ``1`` to let Qwen3 think before answering (default ``0``)
@@ -34,9 +38,11 @@ from __future__ import annotations
 import os
 from typing import Literal
 
+from api.llm import OpenAIClient
 from api.schemas import ToolCallRecord, ToolsResponse
 from tool_use.parser import format_tool_result, parse_tool_calls
 from tool_use.registry import ToolRegistry
+from tool_use.remote import RemoteToolModel
 from tool_use.tools import default_registry
 
 SYSTEM_PROMPT_TEMPLATE = """You are an AI assistant designed to help users.
@@ -102,8 +108,15 @@ class ToolLoop:
         thinking: bool | None = None,
         auto_confirm: bool | None = None,
         max_new_tokens: int = 1024,
+        backend: Literal["local", "openai"] | None = None,
+        remote: RemoteToolModel | None = None,
     ):
         self.registry = registry or default_registry()
+        self.backend = (backend or os.environ.get("ARCA_TOOLS_BACKEND") or "local").lower()
+        if self.backend not in ("local", "openai"):
+            raise ValueError(
+                f"ARCA_TOOLS_BACKEND must be 'local' or 'openai', not {self.backend!r}"
+            )
         self.model_id = model_id or os.environ.get("ARCA_TOOLS_MODEL", "Qwen/Qwen3-4B")
         self.prompt_style = prompt_style or os.environ.get("ARCA_TOOLS_PROMPT", "native")
         self.thinking = _flag("ARCA_TOOLS_THINKING", "0") if thinking is None else thinking
@@ -114,9 +127,18 @@ class ToolLoop:
         self.max_new_tokens = max_new_tokens * (2 if self.thinking else 1)
         self.model = None
         self.tokenizer = None
+        self.remote = remote
+        if self.backend == "openai" and self.remote is None:
+            self.remote = RemoteToolModel(
+                OpenAIClient.from_env(), os.environ.get("LLM_MODEL", ""), self.max_new_tokens
+            )
+        if self.remote is not None:
+            self.model_id = self.remote.model_id
 
     def load(self) -> None:
         """Tokenizer and model, bf16 on GPU (shared with the other phases that use it)."""
+        if self.remote is not None:  # remote backend: nothing to load on this GPU
+            return
         from rlm.gpu import shared_causal_lm
 
         self.tokenizer, self.model = shared_causal_lm(self.model_id)
@@ -134,6 +156,9 @@ class ToolLoop:
 
     def generate(self, messages: list[dict]) -> str:
         """Step 2: one greedy generation from the conversation so far."""
+        if self.remote is not None:
+            tools = self.registry.definitions() if self.prompt_style == "native" else None
+            return self.remote.generate(messages, tools, self.thinking)
         import torch
 
         inputs = self.tokenizer(self.render(messages), return_tensors="pt").to(self.model.device)
