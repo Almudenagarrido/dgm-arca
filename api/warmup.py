@@ -26,7 +26,7 @@ CALLS = [
     ("POST", "/rag", {"question": "¿Está prohibido detectar las emociones de los empleados?"}),
     ("POST", "/agent", {"task": "Un banco que factura 3.000 millones usa un modelo de solvencia "
                         "para hipotecas. Clasifícalo y calcula la multa máxima si incumple sus "
-                        "obligaciones.", "brain": "thinking", "max_steps": 8}),
+                        "obligaciones.", "brain": "remote", "max_steps": 8}),
 ]
 
 

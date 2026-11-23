@@ -73,7 +73,9 @@ def parse_tool_calls(text: str) -> list[ToolCall]:
     calls = []
     for raw in TOOL_CALL_RE.findall(text):
         try:
-            data = json.loads(raw)
+            # raw_decode reads the first JSON object and ignores what follows: small models
+            # often add a stray "}" or text after a valid call.
+            data, _ = json.JSONDecoder().raw_decode(raw)
         except json.JSONDecodeError as exc:
             calls.append(ToolCall(raw=raw, error=f"the JSON of the call is not valid ({exc.msg})"))
             continue

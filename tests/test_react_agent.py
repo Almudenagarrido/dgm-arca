@@ -171,3 +171,24 @@ def test_parser_reads_string_arguments_and_rejects_calls_without_name():
         '<tool_call>{"arguments": {}}</tool_call>'
     )
     assert calls[0].arguments == {"a": 1} and calls[1].error == "the call has no 'name'"
+
+
+def test_call_with_trailing_junk_is_still_read():
+    calls = parse_tool_calls('<tool_call>{"name": "calculator", "arguments": {"x": 1}}}</tool_call>')
+    assert calls[0].error is None and calls[0].name == "calculator"
+
+
+def test_remote_brain_turns_server_tool_calls_into_text():
+    from agent.brains import RemoteBrain
+
+    class FakeRemote:
+        model_id = "big"
+
+        def generate(self, messages, tools, thinking):
+            assert tools and not thinking
+            return '<tool_call>\n{"name": "final_answer", "arguments": {"answer": "ok"}}\n</tool_call>'
+
+    brain = RemoteBrain(model=FakeRemote())
+    a = ReActAgent({"remote": brain}, toolbox())
+    r = a.run("task", brain="remote")
+    assert r.succeeded and r.final_answer == "ok" and brain.label == "remote:big"

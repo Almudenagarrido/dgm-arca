@@ -96,7 +96,7 @@ def main() -> None:
         with gr.Row():
             task = gr.Textbox(label="Tarea", lines=4, scale=4)
             with gr.Column(scale=1):
-                brain = gr.Dropdown(["rlm", "base", "thinking"], value="thinking", label="Cerebro")
+                brain = gr.Dropdown(["remote", "thinking", "rlm", "base"], value="remote", label="Cerebro")
                 max_steps = gr.Slider(1, 20, value=10, step=1, label="Pasos máximos")
                 session = gr.Textbox(label="Sesión (opcional, multi-turno)")
         run = gr.Button("Ejecutar", variant="primary")

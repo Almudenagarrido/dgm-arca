@@ -120,9 +120,9 @@ class RagResponse(BaseModel):
 class AgentRequest(BaseModel):
     task: str = Field(..., min_length=1)
     max_steps: int = Field(default=10, ge=1, le=50)
-    brain: Literal["base", "rlm", "thinking"] = Field(
+    brain: Literal["base", "rlm", "thinking", "remote"] = Field(
         default="rlm",
-        description="Model driving the loop: base model, your phase-1 RLM, or a thinking model",
+        description="Model driving the loop: base model, your phase-1 RLM, a thinking model, or the large remote model",
     )
     session_id: str | None = Field(
         default=None,

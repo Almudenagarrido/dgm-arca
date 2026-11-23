@@ -6,7 +6,9 @@ of the next step, and ``count_tokens(text)`` measures the context. Three brains 
 * ``base``: the small base model (Qwen3-0.6B), the starting point;
 * ``rlm``: the same model plus our phase-1 LoRA adapter (``ARCA_RLM_ADAPTER``). Comparing it
   with ``base`` isolates the effect of our training;
-* ``thinking``: a larger model with native reasoning (``ARCA_THINKING_MODEL``, Qwen3-1.7B).
+* ``thinking``: a larger model with native reasoning (``ARCA_THINKING_MODEL``, Qwen3-1.7B);
+* ``remote``: the large model of the university server (the ``LLM_*`` variables shared with
+  phases 2 and 3). Nothing is loaded on the local GPU.
 
 Any object with those two methods can drive the loop, which is how the tests use a scripted
 fake brain without any GPU.
@@ -104,8 +106,38 @@ class HFBrain:
         return self.tokenizer.decode(new_tokens, skip_special_tokens=True)
 
 
-def brains_from_env() -> dict[str, HFBrain]:
-    """The three brains, configured from the environment (see the module docstring)."""
+class RemoteBrain:
+    """The large model of the university server, through the client of phases 2 and 3."""
+
+    def __init__(self, thinking: bool = False, max_tokens: int = 1024, model=None) -> None:
+        self.thinking = thinking
+        self.max_tokens = max_tokens
+        self._model = model  # a RemoteToolModel; created on first use (it asks the server)
+
+    @property
+    def model(self):
+        if self._model is None:
+            from api.llm import OpenAIClient
+            from tool_use.remote import RemoteToolModel
+
+            self._model = RemoteToolModel(
+                OpenAIClient.from_env(), os.environ.get("LLM_MODEL", ""), self.max_tokens
+            )
+        return self._model
+
+    @property
+    def label(self) -> str:
+        return f"remote:{self.model.model_id}" + (" (thinking)" if self.thinking else "")
+
+    def count_tokens(self, text: str) -> int:
+        return len(text) // 3  # no local tokenizer: a rough, slightly generous estimate
+
+    def generate(self, messages: list[dict], tools: list[dict] | None = None) -> str:
+        return self.model.generate(messages, tools, self.thinking)
+
+
+def brains_from_env() -> dict[str, HFBrain | RemoteBrain]:
+    """The four brains, configured from the environment (see the module docstring)."""
     adapter = os.environ.get("ARCA_RLM_ADAPTER") or None
     small = os.environ.get("ARCA_RLM_BASE_MODEL") or (
         base_model_of(adapter) if adapter else "Qwen/Qwen3-0.6B"
@@ -116,6 +148,7 @@ def brains_from_env() -> dict[str, HFBrain]:
             "thinking", os.environ.get("ARCA_THINKING_MODEL", "Qwen/Qwen3-1.7B"), thinking=True
         ),
     }
+    brains["remote"] = RemoteBrain(thinking=_flag("ARCA_AGENT_REMOTE_THINKING", "0"))
     if adapter:
         brains["rlm"] = HFBrain(
             "rlm", small, adapter=adapter, thinking=_flag("ARCA_AGENT_RLM_THINKING", "1")
