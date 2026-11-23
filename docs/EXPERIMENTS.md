@@ -673,10 +673,10 @@ calculadora, 6 que no necesitan herramienta, 3 encadenados y 2 paralelos. `evalu
 
 | Configuración | Selección | Argumentos | Cadena (n=5) | Etiqueta (n=10) | Respuesta | Llamadas fallidas | s/caso |
 |---|---|---|---|---|---|---|---|
-| v1: descripciones iniciales | 94 % | 65 % | 60 % | 60 % | 71 % | 3 | 8,9 |
-| v2: + índice de artículos, errores accionables, instrucciones multi-step | 97 % | 88 % | 80 % | 80 % | 82 % | 1 | 6,8 |
-| **v3: + frase resuelta en `compute_max_fine`** | **97 %** | **88 %** | 80 % | **80 %** | 89 % | 1 | 6,9 |
-| v3 con el prompt de las diapositivas | 91 % | 74 % | 100 % | 80 % | 93 % | 4 | 8,7 |
+| v1: descripciones iniciales | 94 % | 62 % | 60 % | 60 % | 71 % | 3 | 8,9 |
+| v2: + índice de artículos, errores accionables, instrucciones multi-step | 97 % | 85 % | 80 % | 80 % | 82 % | 1 | 6,8 |
+| **v3: + frase resuelta en `compute_max_fine`** | **97 %** | **85 %** | 80 % | **80 %** | 89 % | 1 | 6,9 |
+| v3 con el prompt de las diapositivas | 91 % | 71 % | 100 % | 80 % | 93 % | 4 | 8,7 |
 | v3 con razonamiento (thinking) | 97 % | 68 % | 100 % | 70 % | 86 % | 2 | 24,9 |
 | v3 con Qwen3-1.7B | 91 % | 53 % | 60 % | 10 % | 57 % | 5 | 6,1 |
 | Qwen3-4B **sin herramientas** | — | — | — | 0 % | 11 % | — | 10,4 |
@@ -694,7 +694,7 @@ diferencias pequeñas entre filas no son significativas. La métrica de respuest
    pero ante el error el modelo se lo explicaba al usuario en vez de reintentar. En v2 la
    descripción dice «no hay argumento name, description ni label», el error lista los nombres
    válidos y termina en «Fix the arguments and call the tool again», y el prompt de sistema pide
-   reintentar. Resultado: 0 casos de mezcla y argumentos del 65 al 88 %.
+   reintentar. Resultado: 0 casos de mezcla y argumentos del 62 al 85 %.
 2. *No sabe dónde está cada cosa.* Pedía `Art. 2` para la definición de «sistema de IA» (está en el
    Art. 3.1) y `Art. 1` para las fechas de aplicación (están en el Art. 113). Un índice de dos
    líneas en la descripción de `lookup_ai_act` lo arregla: consulta del 67 al 100 %.
@@ -714,7 +714,7 @@ scoring crediticio por el «artículo 5, apartado 1, letra a)». Este es el argu
 fase: en derecho, una respuesta fluida y segura sin fuente es peor que ninguna.
 
 **Plantilla nativa frente al prompt de las diapositivas.** Con `slides` el modelo encadena mejor
-(5/5) y su respuesta final es algo mejor, pero falla más en los argumentos (74 % frente a 88 %):
+(5/5) y su respuesta final es algo mejor, pero falla más en los argumentos (71 % frente a 85 %):
 añade hechos que no se dicen (7 campos de más en el caso de la policía) y en el caso del colegio
 empezó consultando el texto en lugar de clasificar. La plantilla nativa es el formato con el que
 Qwen3 aprendió a llamar a funciones y produce argumentos más limpios; la dejamos por defecto.
