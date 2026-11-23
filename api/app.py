@@ -23,6 +23,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
 
 from api.backends import Backends, env
+from api.llm import LLMError
 from api.schemas import (
     AgentRequest,
     AgentResponse,
@@ -58,6 +59,9 @@ def _run(phase: str, loader, call):
         raise _not_ready(phase, exc) from exc
     except HTTPException:
         raise
+    except LLMError as exc:  # remote model (ARCA_TOOLS_BACKEND / LLM_BACKEND=openai) failed
+        log.warning("phase %s: remote LLM failed: %s", phase, exc)
+        raise HTTPException(status_code=503, detail={"phase": phase, "message": str(exc)}) from exc
     except Exception as exc:  # noqa: BLE001 - report loading/runtime failures with context
         log.exception("phase %s failed", phase)
         raise HTTPException(status_code=500, detail={"phase": phase, "message": str(exc)}) from exc

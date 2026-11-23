@@ -226,6 +226,51 @@ unos 10 puntos. Las comparaciones entre variantes valen igual, porque el sesgo e
 las tres. *Fiel* es más estricto: marca como infiel cualquier detalle que no esté en los
 fragmentos citados, aunque sea cierto (g10 añade «Art. 5.1.g» por su cuenta).
 
+## Elegir el generador: local o servidor vLLM
+
+La recuperación, el reranker, el umbral, el prompt y la validación de citas son siempre los
+mismos. Lo único que cambia es quién escribe la respuesta, y se elige con variables de entorno
+(en `.env` o en el propio comando):
+
+| Variable | Valor por defecto | Qué hace |
+|---|---|---|
+| `LLM_BACKEND` | `local` | `local`: `ARCA_RAG_MODEL` (Qwen3-4B) en la GPU propia. `openai`: un servidor con API compatible con OpenAI |
+| `LLM_BASE_URL` | `http://0.0.0.0:8001/v1` | URL del servidor (el vLLM de la universidad; `localhost` no funciona) |
+| `LLM_API_KEY` | vacía | Clave del servidor, enviada como `Authorization: Bearer`. Solo en `.env`, que está en `.gitignore` |
+| `LLM_MODEL` | vacía | Modelo que se pide. Si está vacía, el primero que anuncie `GET /v1/models` |
+| `LLM_TIMEOUT` | `120` | Segundos de espera por respuesta |
+
+```bash
+LLM_BACKEND=openai ARCA_API_PORT=8017 uv run arca-api     # generación en el servidor vLLM
+```
+
+Con `openai` no se carga Qwen3-4B: la API ocupa ~3,5 GB de GPU (embedder y reranker) en lugar
+de ~13,4 GB. La generación es en greedy, sin razonamiento (`enable_thinking: false`) y con el
+mismo límite de 400 tokens que el modelo local. El campo `model` de la respuesta dice qué
+modelo generó.
+
+Si el servidor no responde a tiempo, está caído o rechaza la clave, `/rag` devuelve **HTTP
+503** con un mensaje claro (por ejemplo, «El servidor LLM rechazó la clave (HTTP 401). Revisa
+LLM_API_KEY en .env.») y la API sigue funcionando. El mensaje nunca incluye la clave.
+`tests/test_rag_remote.py` lo comprueba con un servidor simulado, sin red.
+
+**Comparación en la API real** (23-nov-2026, híbrido, `top_k` 5). El servidor sirve
+`qwen3.8-27b-fp8`:
+
+| Pregunta | Qwen3-4B local | qwen3.8-27b-fp8 remoto |
+|---|---|---|
+| ¿Qué multa hay por usar una práctica de IA prohibida? | Correcta: 35 M€ o 7 %. No cita el Art. 99 | Correcta: 35 M€ o 7 %, y 1,5 M€ para instituciones de la UE. Cita las directrices y el Art. 99 ([1][2]) y el Art. 100 ([3]) · `invalid_citations` vacío |
+| ¿Está prohibido detectar las emociones de los empleados? | Correcta: sí, con matices | Correcta: sí, con la excepción de la formación personal y la prohibición en contratación y período de prueba. Cita 2 fragmentos de las directrices · `invalid_citations` vacío |
+| ¿Cuál es la capital de Portugal? | Se abstiene | Se abstiene (umbral: 0,113) |
+| ¿Qué organismo supervisa la IA en España? | Se abstiene | Se abstiene (umbral: 0,915) |
+
+En las dos preguntas sin respuesta se abstiene el **umbral**, antes de llamar al generador,
+así que el resultado no depende del backend. En las dos con respuesta, el modelo de 27B cita
+más fragmentos y más precisos (ahora sí el Art. 99), y en esta prueba tardó entre 4 y 10 s por respuesta
+(la primera incluye cargar el índice). Las cifras del dorado de arriba siguen siendo las de Qwen3-4B.
+Para medir el 27B habría que repetir `rag.evaluate_answers` con este backend, que todavía no
+lo admite.
+
 ## Límites y siguientes pasos
 
 - **Dorado de una sola fuente por pregunta.** Anotar las evidencias alternativas (las

@@ -78,6 +78,7 @@ que requiera dos herramientas encadenadas, y miraré:
 | `ai_act_text.py` | hecho | Descarga el Reglamento de CELLAR y resuelve referencias (`Art. 5.1.f`, `Anexo III.4.a`) |
 | `tools.py` | hecho | `lookup_ai_act`, `classify_risk`, `compute_max_fine`, `write_assessment_report`, `calculator` |
 | `executor.py` | hecho | El flujo de cinco pasos; detrás de `/tools` |
+| `remote.py` | hecho | Paso 2 en un servidor compatible con OpenAI (`ARCA_TOOLS_BACKEND=openai`) |
 | `evaluate.py` | hecho | Selección, argumentos, cadenas, etiqueta y respuesta final; con y sin herramientas |
 | `bench/build_cases.py` | hecho | Genera `bench/cases.jsonl` (34 casos) con las etiquetas del motor de reglas |
 
@@ -91,3 +92,46 @@ formato con el que se entrenó el modelo. Los resultados vuelven como mensajes c
 plantilla los mete en `<tool_response>` dentro de un turno de usuario. Con `slides` se usa el prompt
 de las diapositivas (`SYSTEM_PROMPT_TEMPLATE`) con las definiciones como texto. La comparación entre
 las dos formas está en `docs/EXPERIMENTS.md`. Para ver el prompt exacto, usa `ToolLoop.render(messages)`.
+
+## Generar con el servidor vLLM de la universidad
+
+`ARCA_TOOLS_BACKEND=openai` hace que el paso 2 (generar) se ejecute en el servidor vLLM de
+`LLM_BASE_URL` en lugar de en la GPU local. Lo demás no cambia: el bucle de `executor.py`, el
+parser, la validación con Pydantic, la ejecución y la política de confirmación. No se carga
+Qwen3-4B. La conexión, la clave y los errores se configuran con las mismas variables `LLM_*` que
+la fase 3 (`api/llm.py`). Si el servidor falla, `/tools` responde HTTP 503 con un mensaje claro.
+
+```bash
+ARCA_TOOLS_BACKEND=openai uv run arca-api          # o ponlo en .env
+```
+
+El servidor de la universidad tiene activado el parser de herramientas de vLLM, así que devuelve
+las llamadas estructuradas (`message.tool_calls`) y no como texto. `remote.py` traduce en los dos
+sentidos para que siga decidiendo nuestro parser:
+
+* **Ida:** las definiciones van en `tools=`. Cada `<tool_call>` del historial pasa a ser un
+  `tool_calls` con su id, y cada mensaje `role: tool` recibe el `tool_call_id` que le corresponde.
+* **Vuelta:** cada llamada del servidor se vuelve a escribir como
+  `<tool_call>{"name": ..., "arguments": ...}</tool_call>`, con los argumentos tal como los generó
+  el modelo. Un JSON roto sigue llegando a `parser.py`, que se lo devuelve al modelo como error.
+
+**Banco de 34 casos** (23-nov-2026, `native`, sin razonamiento):
+
+| Modelo | Selección | Argumentos | Cadenas | Etiqueta | Respuesta correcta | Turnos | s/caso |
+|---|---|---|---|---|---|---|---|
+| Qwen3-4B local | 97 % | 85 % | — | 80 % | 89 % | — | — |
+| qwen3.8-27b-fp8 remoto | **100 %** | **94 %** | 100 % | **100 %** | **100 %** | 1,97 | 4,5 |
+
+Los dos casos con argumentos «incorrectos» (classify-07 y classify-08) tienen la etiqueta bien. El
+27B añade hechos ciertos que el caso no espera: «un ayuntamiento» → `public_body_or_public_service:
+true`, y en el reconocimiento facial también el objetivo (`rbi_objective`). La métrica pide los
+argumentos exactos y los cuenta como fallo. Con un modelo de este tamaño, el banco se queda
+corto: casi todo sale bien.
+
+```bash
+ARCA_TOOLS_BACKEND=openai uv run python -m tool_use.evaluate --out reports/phase2_eval_remote.json
+```
+
+`tool_use.evaluate` no lee `.env`: la clave tiene que estar en el entorno. `uv run --env-file .env`
+no sirve, porque `uv` no acepta la línea `ARCA_TEAM=Almudena, Gloria y Victoria` sin comillas.
+

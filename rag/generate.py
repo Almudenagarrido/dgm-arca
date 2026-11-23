@@ -4,7 +4,10 @@
 2. **Rerank** the pool with Qwen3-Reranker and keep the best ``top_k`` (optional).
 3. **Gate**: if even the best reranker score is below ``min_score`` (calibrated on a
    separate set by ``rag.calibrate``), answer «No lo sé» without calling the generator.
-4. **Generate**: Qwen3-4B gets the fragments numbered ``[1]..[k]`` and must cite them.
+4. **Generate**: the generator gets the fragments numbered ``[1]..[k]`` and must cite them.
+   ``LLM_BACKEND=local`` (default) runs Qwen3-4B here; ``LLM_BACKEND=openai`` sends the
+   same messages to an OpenAI-compatible server (``LLM_BASE_URL``, ``LLM_API_KEY``,
+   ``LLM_MODEL``).
 5. **Check citations**: every ``[n]`` in the answer is mapped to a chunk id; numbers that
    do not correspond to a retrieved fragment are reported in ``invalid_citations``
    and never reach ``citations``.
@@ -18,6 +21,7 @@ import os
 import re
 from dataclasses import dataclass
 
+from api.llm import OpenAIClient
 from rag.chunking import Chunk
 from rag.embed import Embedder
 from rag.rerank import Reranker
@@ -106,7 +110,63 @@ class Generator:
         text = self.tokenizer.decode(
             output[0, inputs["input_ids"].shape[1] :], skip_special_tokens=True
         )
-        return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+        return strip_thinking(text)
+
+
+def strip_thinking(text: str) -> str:
+    """Drop a ``<think>...</think>`` block (or an unterminated one) from a reply."""
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    return re.sub(r"<think>.*", "", text, flags=re.DOTALL).strip()
+
+
+class OpenAIGenerator:
+    """Chat generation through an OpenAI-compatible server (the university vLLM service).
+
+    Same interface as ``Generator`` (``model_name`` and ``chat(messages) -> str``), so the
+    pipeline, the prompt, the citation checks and the abstention logic are unchanged: only
+    who writes the text changes. Decoding is greedy and thinking is off, as with the local
+    model. Connection and errors live in ``api.llm.OpenAIClient`` (shared with phase 2).
+    """
+
+    def __init__(
+        self,
+        client: OpenAIClient,
+        model_name: str = "",
+        thinking: bool = False,
+        max_new_tokens: int = 400,
+    ) -> None:
+        self.client = client
+        self.thinking = thinking
+        self.max_new_tokens = max_new_tokens
+        self.model_name = client.resolve_model(model_name)
+
+    @classmethod
+    def from_env(cls) -> OpenAIGenerator:
+        env = os.environ.get
+        return cls(
+            OpenAIClient.from_env(),
+            model_name=env("LLM_MODEL", ""),
+            thinking=env("ARCA_RAG_THINKING", "0") == "1",
+        )
+
+    def chat(self, messages: list[dict[str, str]]) -> str:
+        message = self.client.chat(
+            self.model_name, messages, thinking=self.thinking, max_tokens=self.max_new_tokens
+        )
+        return strip_thinking(message.get("content") or "")
+
+
+def build_generator() -> Generator | OpenAIGenerator:
+    """``LLM_BACKEND=local`` (default) → local Qwen3; ``openai`` → remote server."""
+    env = os.environ.get
+    backend = (env("LLM_BACKEND") or "local").lower()
+    if backend == "openai":
+        return OpenAIGenerator.from_env()
+    if backend == "local":
+        return Generator(
+            env("ARCA_RAG_MODEL", DEFAULT_MODEL), thinking=env("ARCA_RAG_THINKING", "0") == "1"
+        )
+    raise ValueError(f"LLM_BACKEND must be 'local' or 'openai', not {backend!r}")
 
 
 @dataclass
@@ -124,7 +184,7 @@ class RagPipeline:
     def __init__(
         self,
         kb: KnowledgeBase,
-        generator: Generator,
+        generator: Generator | OpenAIGenerator,
         reranker: Reranker | None = None,
         rerank_pool: int = 30,
         min_score: float | None = None,
@@ -143,9 +203,7 @@ class RagPipeline:
             Embedder(),
             lam=float(env("ARCA_RAG_LAMBDA", "0.7")),
         )
-        generator = Generator(
-            env("ARCA_RAG_MODEL", DEFAULT_MODEL), thinking=env("ARCA_RAG_THINKING", "0") == "1"
-        )
+        generator = build_generator()  # the remote backend never loads the local model
         reranker = Reranker() if env("ARCA_RAG_RERANK", "1") == "1" else None
         min_score = env("ARCA_RAG_MIN_SCORE", "")
         return cls(
