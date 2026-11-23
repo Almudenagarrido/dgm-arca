@@ -94,3 +94,11 @@
 - Afecta a las respuestas que se basan en esos artículos (`/rag` y `search_knowledge_base`
   del agente); la clasificación y las multas no, porque salen del motor de reglas.
 - Regenerarlo lleva ~3 h con la evaluación → se arregla en el proyecto final.
+
+### Comparación de cerebros (20 tareas, 23 nov)
+- remote 90 % (IC 70-97) · thinking 30 % (15-52) · rlm 10 % (3-30) · base 5 % (1-24).
+- base casi no usa herramientas (18/20 responde directamente).
+- rlm sí las usa pero se atasca (6 bucles detectados, 6 sin pasos): la Fase 1 lo entrenó para
+  razonar, no para usar herramientas. Las protecciones del bucle funcionaron.
+- base vs rlm: los intervalos se solapan → con 20 tareas no se ve efecto de la Fase 1.
+- Idea para el proyecto final → SFT del modelo pequeño con las trazas buenas de remote.
