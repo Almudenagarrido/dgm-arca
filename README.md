@@ -15,7 +15,7 @@ El repositorio se reinició el 18-nov-2026 a partir del corpus oficial (plan en
 |---|---|---|
 | 1 · Razonamiento | `POST /reasoning` | Lista (los pesos se descargan aparte, ver «Pesos») |
 | 2 · Herramientas | `POST /tools` | Lista |
-| 3 · Conocimiento (RAG) | `POST /rag` | Solo el corpus |
+| 3 · Conocimiento (RAG) | `POST /rag` | Lista |
 | 4 · Agente | `POST /agent` | Pendiente |
 
 ---
@@ -178,6 +178,45 @@ significativas.
 
 ---
 
+## Fase 3 · Conocimiento (`/rag`)
+
+Responde preguntas sobre el reglamento y las directrices de la Comisión con fragmentos del
+corpus oficial. Cita cada afirmación y dice «No lo sé» cuando el corpus no tiene la respuesta.
+Los detalles y el análisis de fallos están en [`rag/README.md`](rag/README.md).
+
+```
+pregunta ─► híbrido 0,7·denso + 0,3·BM25 ─► 30 candidatos ─► Qwen3-Reranker ─► top-k
+        ─► ¿P(sí) < 0,9932? ─► «No lo sé» | Qwen3-4B con fragmentos [1]..[k] ─► citas validadas
+```
+
+- **Conjunto dorado** escrito leyendo el corpus: 60 preguntas parafraseadas con la cita
+  literal que las responde, 10 sin respuesta y otro conjunto de 30 solo para calibrar el
+  umbral.
+- **Troceado**: el recursivo y el semántico (por distancia entre embeddings de frases
+  consecutivas) empatan. El corpus ya viene troceado por artículo y apartado. Lo que sí ayuda
+  es anteponer el título del documento. Se usa `recursive-1000+title`.
+- **Retrievers**: Qwen3-Embedding-0.6B con instrucción, BM25 e híbrido. λ = 0,7 elegido con
+  validación cruzada en 5 pliegues.
+
+| Retriever (`recursive-1000+title`) | R@1 | R@5 | R@10 | MRR@10 |
+|---|---|---|---|---|
+| Denso | 0,33 | 0,58 | 0,68 | 0,434 |
+| BM25 | 0,17 | 0,47 | 0,57 | 0,291 |
+| Híbrido λ = 0,7 | 0,37 | 0,60 | 0,73 | 0,468 |
+
+| Respuestas (70 preguntas) | Correcta | Fiel | Citas válidas | Se abstiene sin respuesta | Abstención falsa |
+|---|---|---|---|---|---|
+| Híbrido top-5 | 75 % | 85 % | 100 % | 80 % | 3 % |
+| + reranker | 83 % | 88 % | 100 % | 80 % | 2 % |
+| + reranker + umbral (`/rag`) | 78 % | 83 % | 100 % | 90 % | 7 % |
+
+El reranker es la pieza que más aporta. El umbral, calibrado con su propio conjunto, cambia
+tres respuestas correctas por una abstención más. Se mantiene porque una respuesta legal
+inventada es peor que un «No lo sé». «Correcta» y «fiel» las decide Qwen3-4B como juez, revisado
+a mano en 20 casos (coincide en 18 y peca de blando).
+
+---
+
 ## Levantarlo
 
 Hace falta Python 3.11 o 3.12 y [`uv`](https://docs.astral.sh/uv/), o Docker con
@@ -185,7 +224,7 @@ Hace falta Python 3.11 o 3.12 y [`uv`](https://docs.astral.sh/uv/), o Docker con
 
 ```bash
 cp .env.example .env                 # configuración de las fases
-uv sync --extra train                # fases 1 y 2
+uv sync --extra train --extra rag    # fases 1, 2 y 3
 uv run arca-api                      # API en http://localhost:8000/docs
 ```
 
@@ -197,6 +236,9 @@ curl -s -X POST localhost:8000/reasoning -H 'Content-Type: application/json' \
 
 curl -s -X POST localhost:8000/tools -H 'Content-Type: application/json' \
   -d '{"query": "¿Qué dice el artículo 5.1.f y qué multa máxima tiene una empresa que factura 50 M€ si lo incumple?"}'
+
+curl -s -X POST localhost:8000/rag -H 'Content-Type: application/json' \
+  -d '{"question": "¿En cuántos días hay que notificar un incidente grave si muere una persona?", "retriever": "hybrid"}'
 ```
 
 ### Regenerar datos y resultados
@@ -209,6 +251,9 @@ uv run python -m rlm.train_grpo              # GRPO (GPU)
 uv run python -m rlm.evaluate                # pass@1 base / SFT / GRPO
 uv run python -m tool_use.bench.build_cases  # banco de la fase 2
 uv run python -m tool_use.evaluate           # métricas de la fase 2, con y sin herramientas
+uv run python -m rag.evaluate                # fase 3: Recall@k y MRR, troceados y λ (GPU)
+uv run python -m rag.calibrate               # umbral del «No lo sé» (GPU)
+uv run python -m rag.evaluate_answers        # respuestas con juez LLM (GPU)
 ```
 
 Las opciones de cada script están en su `--help` y en [`rlm/README.md`](rlm/README.md) y
@@ -230,9 +275,9 @@ make lint
 | [`rlm/`](rlm/README.md) | Fase 1: motor de reglas, generador de datos, verificador, recompensas, destilación, SFT, GRPO (y un paso a mano), evaluación e inferencia |
 | [`tool_use/`](tool_use/README.md) | Fase 2: herramientas, registro, parser, bucle de tool use, banco de 34 casos y evaluación |
 | [`smoke/`](smoke/README.md) | Comprobación del entorno de GPU y GRPO de prueba |
-| [`rag/`](rag/) | Corpus oficial (149 documentos) y script que lo regenera |
+| [`rag/`](rag/README.md) | Fase 3: corpus oficial, ingesta, troceados, embeddings, retrievers, reranker, conjunto dorado, umbral de «No lo sé», generación con citas y evaluación |
 | [`api/`](api/README.md) | API FastAPI con los cuatro endpoints |
-| [`docs/`](docs/) | Cuaderno de experimentos de las fases 1 y 2 (`EXPERIMENTS.md`), cronograma y extracción del corpus |
+| [`docs/`](docs/) | Cuaderno de experimentos de las fases 1 a 3 (`EXPERIMENTS.md`), cronograma y extracción del corpus |
 
 ### El corpus
 

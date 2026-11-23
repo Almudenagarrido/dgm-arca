@@ -1,7 +1,7 @@
-# Cuaderno de experimentos · Fases 1 y 2
+# Cuaderno de experimentos · Fases 1, 2 y 3
 
-Registro, por orden de fecha, de cómo se construyeron las fases 1 (razonamiento) y 2
-(herramientas): qué se quería saber, qué se probó, qué salió y qué se decidió. Viene del
+Registro, por orden de fecha, de cómo se construyeron las fases 1 (razonamiento), 2
+(herramientas) y 3 (RAG): qué se quería saber, qué se probó, qué salió y qué se decidió. Viene del
 cuaderno de la v1 del proyecto (etiqueta `arca-v1`), con solo las entradas de estas dos fases.
 Los resultados finales están resumidos en el [README](../README.md).
 
@@ -914,3 +914,82 @@ obliga a repetir toda la fase 1 (más de 30 h de GPU), así que lo dejamos como 
 Ficheros: `rlm/data/test.jsonl` y `test_ood.jsonl` (nuevos), `test_v1.jsonl` y
 `test_ood_v1.jsonl` (antiguos), `reports/eval_test*.json` (nuevos) y `eval_test*_v1.json`
 (antiguos), `reports/phase1_data_audit.json`, `logs/eval_test_v2.log`.
+
+---
+
+## Fase 3 · Conocimiento (RAG)
+
+### 2026-11-23 · Fase 3 · Desde cero: dorado, troceados, λ, reranker y «No lo sé»
+
+**Punto de partida.** Solo el corpus (149 documentos, 1,76 M caracteres). El código de la fase se
+escribe de nuevo, sin reutilizar nada de las fases 1 y 2 ni de la v1. Hardware: la porción MIG de
+16 GB de la H200.
+
+**Conjunto dorado.** Se escribió leyendo el corpus. Son 60 preguntas con respuesta y 10 sin ella
+en `rag/gold/gold.jsonl`, y otras 15 + 15 distintas en `rag/gold/calibration.jsonl`, solo para el
+umbral. Las preguntas están parafraseadas para no regalarle la victoria a BM25. Cada una lleva
+la cita literal que la responde, y un fragmento cuenta como relevante si cubre la mitad de esa
+cita. Las 75 citas aparecen en el corpus (`tests/test_rag.py`). Para las 10 sin respuesta se
+comprobó con `grep` que el corpus no contiene la información.
+
+**Recuperación** (`uv run python -m rag.evaluate`, `logs/phase3_retrieval.log`). Se probaron 8
+troceados con los 3 retrievers y λ de 0 a 1 en pasos de 0,1:
+
+| Troceado | Denso | BM25 | Híbrido (λ*) | MRR con val. cruzada |
+|---|---|---|---|---|
+| recursive-500 | 0,323 | 0,235 | 0,361 (0,9) | 0,354 |
+| recursive-1000 | 0,408 | 0,265 | 0,438 (0,9) | 0,438 |
+| recursive-1500 | 0,391 | 0,310 | 0,451 (0,7) | 0,436 |
+| semantic-80 / 90 / 95 | 0,418 / 0,400 / 0,393 | 0,319 / 0,311 / 0,332 | 0,444 / 0,454 / 0,445 (0,7) | 0,432 / 0,454 / 0,415 |
+| recursive-1000+title | 0,434 | 0,291 | 0,468 (0,7) | **0,468** |
+| semantic-90+title | 0,367 | 0,378 | **0,478** (0,5) | 0,456 |
+
+(MRR@10.) Esperaba que el semántico ganara al recursivo, y no gana: a igual tamaño medio quedan
+a 0,003. El corpus ya viene troceado por artículo y apartado, así que el recursivo, que corta
+primero por párrafos, ya respeta la estructura. Lo que sí mejora siempre es anteponer el
+título del documento (+0,03). λ se eligió con validación cruzada en 5 pliegues para no elegirlo y
+medirlo con las mismas preguntas. **Decisión: `recursive-1000+title`, λ = 0,7.** Tiene la mejor
+cifra con validación cruzada y el mismo λ en los cinco pliegues. `semantic-90+title` tiene mejor
+MRR directo, pero su λ cambia según el pliegue. El intervalo de confianza al 95 % de R@5 es
+[0,47; 0,73], y diferencias de ±0,02 no significan nada.
+
+**Instrucción en la consulta** (`--no-instruction`, `logs/phase3_retrieval_noinstr.log`). Quitarla
+cambia el MRR del híbrido de 0,438 a 0,420 con `recursive-1000` y de 0,478 a 0,486 con
+`semantic-90+title`. Es un efecto pequeño y de signo variable, menos de lo que esperaba. Se
+mantiene la instrucción.
+
+**Fallos de recuperación.** De los 16 fallos en el top-10, varios son de las directrices de
+prácticas prohibidas: tienen 778 fragmentos, frente a los 19 del Art. 5, y responden a la pregunta
+igual de bien, pero el dorado solo acepta el artículo. Los reales son g54 (el Art. 49 se parece
+más que el 22) y g59 y g60, preguntas en español con la respuesta solo en los borradores en inglés.
+
+**Umbral del «No lo sé»** (`uv run python -m rag.calibrate`). Se calibró con el conjunto aparte y
+se aplicó sin tocar al dorado. Con la mejor P(sí) del reranker, el umbral queda en 0,9932: en el
+dorado responde al 93 % de las preguntas con respuesta y se abstiene en el 80 % de las que no la
+tienen. Con el coseno denso como umbral, 77 % y 60 %: no separa.
+
+**Respuestas** (`uv run python -m rag.evaluate_answers`, `logs/phase3_answers.log`). Primero se
+lanzó con Qwen3-8B como juez y se quedó sin memoria al cargarlo junto a Qwen3-4B. El juez pasó a
+ser el propio generador, y por eso se revisaron a mano 20 veredictos (18 de acuerdo; los dos
+desacuerdos son de un juez blando):
+
+| Variante | Contexto | Correcta | Fiel | Citas válidas | Abst. falsa | Abst. sin respuesta |
+|---|---|---|---|---|---|---|
+| híbrido top-5 | 60 % | 75 % | 85 % | 100 % | 3 % | 80 % |
+| + reranker | 67 % | 83 % | 88 % | 100 % | 2 % | 80 % |
+| + reranker + umbral | 67 % | 78 % | 83 % | 100 % | 7 % | 90 % |
+
+El reranker es la mejora clara. El umbral gana una abstención (u01) a costa de tres respuestas
+correctas (g06, g30, g33). En este dorado no compensa, pero se mantiene porque una respuesta
+legal inventada cuesta más que un «No lo sé». La alucinación que pasa las dos barreras es u02:
+del «acceso público y gratuito» a la base de datos el modelo deduce que el registro es gratis.
+
+**Endpoint.** `POST /rag` probado con la API real, con los tres retrievers y `top_k` 3, 5 y 50. Al
+probarlo salió un fallo de memoria del reranker: calculaba los logits del vocabulario completo
+en todas las posiciones (lote × longitud × 151k). Se arregló con `logits_to_keep=1`, que no cambia
+las puntuaciones. Con todo cargado ocupa 13,4 GB. Queda abierto que `/health` carga las fases 1 a 3
+a la vez (~23 GB) y no cabe en 16 GB.
+
+Ficheros: `rag/gold/*.jsonl`, `reports/phase3_retrieval.json`, `phase3_lambda_sweep.png`,
+`phase3_gate.json` y `.png`, `phase3_answers.json` y `phase3_answers_*.jsonl`,
+`logs/phase3_*.log`.

@@ -107,6 +107,11 @@ class RagResponse(BaseModel):
     citations: list[str] = Field(default_factory=list, description="Chunk ids cited in the answer.")
     retriever: Literal["dense", "bm25", "hybrid"]
     model: str = ""
+    # Optional extras: whether the pipeline answered «No lo sé», the score the gate looked at
+    # and any [n] in the answer that did not match a retrieved chunk (dropped from citations).
+    abstained: bool = False
+    gate_score: float | None = None
+    invalid_citations: list[str] = Field(default_factory=list)
 
 
 # -------------------------------------------------------------------------- phase 4: /agent
