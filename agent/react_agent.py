@@ -182,7 +182,7 @@ class ReActAgent:
     # ---------------------------------------------------------------- the loop
 
     def run(
-        self, task: str, max_steps: int = 10, brain: str = "rlm", session_id: str | None = None
+        self, task: str, max_steps: int = 10, brain: str = "remote", session_id: str | None = None
     ) -> AgentResponse:
         if brain not in self.brains:
             raise NotImplementedError(

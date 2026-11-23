@@ -1,10 +1,8 @@
 # Mapa del proyecto ARCA
 
-## Qué es cada cosa
+**ARCA** → la práctica: clasifica sistemas de IA según el AI Act y cita el artículo. Cuatro fases, cada una con su endpoint. **(martes 24)**
 
-- **ARCA** → la práctica: clasifica sistemas de IA según el AI Act y cita el artículo. Cuatro
-  fases, cada una con su endpoint. **Evaluación en vivo el martes 24.**
-- **Proyecto final** → ARCA mejorado (limitaciones de ARCA y cómo las mejoramos). **Entrega el 29.**
+**Proyecto final** → ARCA mejorado (limitaciones de ARCA y cómo las mejoramos). **(entrega 29)**
 
 ## Cómo encaja todo
 
@@ -20,11 +18,11 @@ Fase 4 · el agente       → usa 1 + 2 + 3 en un bucle  → POST /agent
 
 ## Las fases
 
-- **Fase 1 · Razonamiento** · `rlm/` · Gloria → Qwen3-0.6B con SFT + GRPO, 75,5 % en test.
-- **Fase 2 · Herramientas** · `tool_use/` · Gloria → 5 herramientas, Qwen3-4B elige bien el 97 %.
-- **Fase 3 · RAG** · `rag/` · Victoria → búsqueda híbrida + reranker, cita y dice «No lo sé».
-- **Fase 4 · Agente** · `agent/` · Almudena → bucle, memoria, 20 tareas, visor, 4 cerebros.
-- **API** · `api/` · Almudena → arranca siempre; una fase sin terminar responde 501.
+- **Fase 1 · Razonamiento** · `rlm/` → Qwen3-0.6B con SFT + GRPO, 75,5 % en test.
+- **Fase 2 · Herramientas** · `tool_use/` → 5 herramientas, Qwen3-4B elige bien el 97 %.
+- **Fase 3 · RAG** · `rag/` → búsqueda híbrida + reranker, cita y dice «No lo sé».
+- **Fase 4 · Agente** · `agent/` → bucle, memoria, 20 tareas, visor, 4 cerebros.
+- **API** · `api/` → arranca siempre; una fase sin terminar responde 501.
 
 Detalle → `README.md` · `docs/EXPERIMENTS.md` (fases 1-2) · `rag/README.md` · `docs/PHASE4_LOG.md`
 

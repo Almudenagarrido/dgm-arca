@@ -12,7 +12,7 @@ The summary reports, per brain:
 
 Results are saved after every task, so an interrupted run can continue with ``--resume``::
 
-    uv run python -m agent.evaluate --brains base rlm thinking --out reports/phase4_eval.json
+    uv run python -m agent.evaluate --brains remote thinking rlm base --out reports/phase4_eval.json
 """
 
 from __future__ import annotations
@@ -117,13 +117,17 @@ def run_task(agent, task: dict, brain: str, max_steps: int) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--bench", default=str(BENCH))
-    parser.add_argument("--brains", nargs="+", default=["base", "rlm", "thinking"])
+    parser.add_argument("--brains", nargs="+", default=["remote", "thinking", "rlm", "base"])
     parser.add_argument("--max-steps", type=int, default=10)
     parser.add_argument("--out", default="reports/phase4_eval.json")
     parser.add_argument("--resume", action="store_true", help="skip runs already in --out")
     args = parser.parse_args()
 
+    from dotenv import load_dotenv
+
     from agent.react_agent import ReActAgent  # heavy import: only when running
+
+    load_dotenv()  # same settings as the API (remote model, adapter...)
 
     out = Path(args.out)
     rows = json.loads(out.read_text())["rows"] if args.resume and out.exists() else []
