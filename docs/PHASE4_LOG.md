@@ -76,3 +76,15 @@
   `classify_risk` con solo `["5.b"]` → **alto riesgo, Anexo III.5.b** → multa 90 M → respuesta
   completa en 3 pasos.
 - Pendiente → medirlo con las 20 tareas frente a `base`, `rlm` y `thinking`.
+- Resultado con las 20 tareas: **18/20 (90 %, IC 95 % 70-97 %)**, 3,2 pasos y ~7 s por tarea,
+  las 2 imposibles rechazadas, ningún bucle.
+
+### Mejora 2 (pendiente) · Confusión con «reconocimiento de emociones»
+- Limitación → los 2 fallos de `remote` tienen la misma causa: el modelo marca
+  `emotion_recognition` cuando la tarea habla de vigilar un comportamiento.
+  - Examen online que detecta si copian → dice **prohibido** (Art. 5.1.f); es **alto riesgo**
+    (Anexo III.3.d) y la multa sería de 15 M, no de 35 M.
+  - Detector de mentiras en asilo → dice alto riesgo por III.1.c (emociones); es un
+    **polígrafo** (III.7.a).
+- Ideas → aclarar la descripción de ese dato en `classify_risk`, o un paso que verifique la
+  clasificación antes de responder.
