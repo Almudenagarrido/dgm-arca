@@ -9,7 +9,9 @@
 
 A *chunking config* is a string such as ``recursive-1000``, ``semantic-90`` or
 ``semantic-90+title`` (the ``+title`` suffix prefixes each chunk with its document title
-before indexing it).
+before indexing it). A *per-folder* config gives each top-level corpus folder its own:
+``aiact:recursive-1000+title,directrices:semantic-90+title``; ``*:`` sets the default for
+folders not listed.
 """
 
 from __future__ import annotations
@@ -125,23 +127,68 @@ def parse_config(config: str) -> tuple[str, float, bool]:
     return match[1], float(match[2]), bool(match[3])
 
 
-def chunk_corpus(docs: list[Document], config: str, embedder: Embedder) -> list[Chunk]:
+def parse_folder_configs(config: str) -> dict[str, str]:
+    """``aiact:recursive-1000,*:semantic-90`` → {"aiact": "recursive-1000", "*": "semantic-90"}.
+
+    A plain config applies to every folder: ``recursive-1000`` → {"*": "recursive-1000"}.
+    """
+    if ":" not in config:
+        parse_config(config)
+        return {"*": config}
+    mapping = {}
+    for part in config.split(","):
+        folder, sep, base = (x.strip() for x in part.partition(":"))
+        if not sep or not folder or folder in mapping:
+            raise ValueError(
+                f"Bad per-folder config {config!r}; e.g. "
+                "aiact:recursive-1000+title,directrices:semantic-90+title"
+            )
+        parse_config(base)
+        mapping[folder] = base
+    return mapping
+
+
+def config_for(doc_id: str, mapping: dict[str, str]) -> str:
+    """The chunking config that applies to ``doc_id`` (folder = first path component)."""
+    folder = doc_id.split("/", 1)[0] if "/" in doc_id else ""
+    base = mapping.get(folder, mapping.get("*"))
+    if base is None:
+        raise ValueError(f"No chunking config for {doc_id!r}: add '{folder}:...' or '*:...'")
+    return base
+
+
+def _chunk_docs(
+    docs: list[Document], config: str, embedder: Embedder, sentence_docs: list[Document]
+) -> dict[str, list[Chunk]]:
+    """Chunks of each document under one plain config, keyed by doc id."""
     kind, param, _ = parse_config(config)
     if kind == "recursive":
-        return [
-            c for d in docs for c in recursive_chunks(d, size=int(param), overlap=int(param) // 7)
-        ]
+        overlap = int(param) // 7
+        return {d.doc_id: recursive_chunks(d, size=int(param), overlap=overlap) for d in docs}
 
     # Embed every sentence of the corpus once (cached on disk) and look them up per document,
-    # so trying several percentiles costs no extra GPU time.
-    sentences = sorted({d.text[s:e] for d in docs for s, e in split_sentences(d.text)})
+    # so trying several percentiles costs no extra GPU time. ``sentence_docs`` is the whole
+    # corpus even when only some folders are chunked semantically, so the cache is shared.
+    sentences = sorted({d.text[s:e] for d in sentence_docs for s, e in split_sentences(d.text)})
     vectors = embedder.embed_documents(sentences, cache_name="sentences")
     row = {text: i for i, text in enumerate(sentences)}
 
     def lookup(texts: list[str]) -> np.ndarray:
         return vectors[[row[t] for t in texts]]
 
-    return [c for d in docs for c in semantic_chunks(d, lookup, percentile=param)]
+    return {d.doc_id: semantic_chunks(d, lookup, percentile=param) for d in docs}
+
+
+def chunk_corpus(docs: list[Document], config: str, embedder: Embedder) -> list[Chunk]:
+    """Chunks of the whole corpus, in document order; ``config`` may be per-folder."""
+    mapping = parse_folder_configs(config)
+    groups: dict[str, list[Document]] = {}
+    for d in docs:
+        groups.setdefault(config_for(d.doc_id, mapping), []).append(d)
+    by_doc: dict[str, list[Chunk]] = {}
+    for base, group in groups.items():
+        by_doc.update(_chunk_docs(group, base, embedder, docs))
+    return [c for d in docs for c in by_doc[d.doc_id]]
 
 
 @dataclass
@@ -169,13 +216,14 @@ class KnowledgeBase:
         docs: list[Document] | None = None,
     ) -> KnowledgeBase:
         docs = docs if docs is not None else load_corpus(corpus_dir)
-        _, _, with_title = parse_config(config)
+        mapping = parse_folder_configs(config)
         chunks = chunk_corpus(docs, config, embedder)
-        texts = [c.index_text(with_title) for c in chunks]
-        vectors = embedder.embed_documents(texts, cache_name=f"chunks-{config}")
+        texts = [c.index_text(parse_config(config_for(c.doc_id, mapping))[2]) for c in chunks]
+        name = re.sub(r"[^\w.+-]+", "_", config)  # per-folder configs carry ":", "," and "*"
+        vectors = embedder.embed_documents(texts, cache_name=f"chunks-{name}")
         store = VectorStore([c.id for c in chunks], vectors)
         INDEX_DIR.mkdir(parents=True, exist_ok=True)
-        store.save(INDEX_DIR / f"store-{config}.npz")
+        store.save(INDEX_DIR / f"store-{name}.npz")
         return cls(config, chunks, DenseRetriever(store, embedder), BM25Retriever(texts), lam)
 
     def scores(self, query: str, retriever: str) -> np.ndarray:

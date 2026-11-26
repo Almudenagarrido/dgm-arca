@@ -993,3 +993,91 @@ a la vez (~23 GB) y no cabe en 16 GB.
 Ficheros: `rag/gold/*.jsonl`, `reports/phase3_retrieval.json`, `phase3_lambda_sweep.png`,
 `phase3_gate.json` y `.png`, `phase3_answers.json` y `phase3_answers_*.jsonl`,
 `logs/phase3_*.log`.
+
+## Arreglos tras probar las cuatro fases
+
+### 2026-11-24 · Fase 1 · El adaptador LoRA se fusiona al cargar
+
+**Problema.** `/reasoning` y el cerebro del agente con el adaptador de la fase 1 cargaban el
+adaptador sin fusionar (`PeftModel` sin `merge_and_unload`). Cada capa lineal hacía, además de
+`x·W`, las dos multiplicaciones de LoRA (`x·A·B`) en cada token generado, y eso son siete
+proyecciones por bloque y 28 bloques. Con una sola pregunta, como en la API, Qwen3-0.6B iba a
+36 tok/s.
+
+**Arreglo.** Se carga el modelo base en fp32, se fusiona `W + BA` y se pasa a bf16 al final
+(`rlm/inference.py`, `agent/brains.py`). La misma pregunta va a **70 tok/s**. Fusionar en bf16
+redondea `W + BA` otra vez y se descartó.
+
+**Reevaluación** (test nuevo, greedy, 1536 tokens, lotes de 16, la misma GPU):
+
+| Carga | Etiqueta | Etiqueta + cita | Formato | Tokens | Tiempo |
+|---|---|---|---|---|---|
+| sin fusionar | 75,5 % | 67,0 % | 88,5 % | 713 | 19,2 min |
+| fusión en bf16 | 71,5 % | 65,5 % | 87,0 % | 751 | — |
+| **fusión en fp32 → bf16** | **73,0 %** | **67,0 %** | 86,5 % | 716 | 19,5 min |
+
+Sin fusionar se reproduce exactamente la cifra publicada. Con la fusión, ninguna de las 200
+salidas es idéntica: un cambio de redondeo basta para que un razonamiento largo en greedy tome
+otro camino. El nivel, sin embargo, se mantiene. Frente a sin fusionar, la fusión en fp32 falla
+23 problemas que antes acertaba y acierta 18 que antes fallaba (McNemar exacto p = 0,53), y en
+etiqueta + cita queda igual. En lotes de 16 no hay ganancia de tiempo porque la GPU ya va llena,
+así que la mejora es para generar de una en una, que es lo que hacen la API y el agente.
+**La cifra de la fase 1 sigue siendo 75,5 %; el endpoint sirve el modelo fusionado (73,0 %,
+diferencia no significativa).**
+
+### 2026-11-24 · Fase 3 · Corpus completo y reevaluación
+
+**Problema** (detectado el 23 nov, `docs/PHASE4_LOG.md`). El Markdown del Reglamento se escribía
+desde el árbol de `ai_act_text`, que solo guarda los hijos de cada unidad. Se perdían unos
+3.700 caracteres en 19 ficheros: el Anexo VI vacío, la entrada en vigor del Art. 113, los
+puntos 1-2 y la frase de entrada del 3.1 del Anexo VII, y las frases de entrada de los Arts. 3,
+16, 66, 108 y 110 y de casi todos los anexos. En otros 34 ficheros los subpárrafos quedaban
+pegados en una línea.
+
+**Arreglo.** `rag/download_corpus.py` recorre el XHTML en orden. Los 126 ficheros de artículos
+y anexos conservan ahora todos los caracteres del XHTML y en el mismo orden
+(`tests/test_download_corpus.py` lo comprueba con un extracto). Las directrices salen idénticas.
+
+**Reevaluación** (`rag.evaluate`, `rag.calibrate`, `rag.evaluate_answers`; ~40 min en total):
+
+| | Antes | Ahora |
+|---|---|---|
+| Fragmentos `recursive-1000+title` | 2579 | 2589 |
+| Híbrido λ = 0,7: R@5 / MRR@10 / MRR con val. cruzada | 0,60 / 0,468 / 0,468 | 0,63 / 0,476 / 0,476 |
+| `semantic-90+title`: MRR directo / con val. cruzada | 0,478 / 0,456 | 0,475 / 0,461 |
+| Umbral del reranker | 0,9932 | 0,9939 |
+| Dorado con umbral: responde / se abstiene | 93 % / 80 % | 93 % / 90 % |
+| Respuestas híbrido / + reranker / + umbral: correctas | 75 / 83 / 78 % | 77 / 83 / 78 % |
+
+Casi nada cambia porque el dorado apenas pregunta por el texto perdido. La decisión sale
+reforzada: `recursive-1000+title` pasa a ser también la mejor en MRR directo, y λ = 0,7 se
+mantiene en los cinco pliegues. El umbral sigue cambiando las mismas tres respuestas correctas
+(g06, g30, g33) por la misma abstención (u01). `ARCA_RAG_MIN_SCORE` pasa a 0,9939. El
+experimento sin instrucción en la consulta no se repitió.
+
+### 2026-11-26 · Fase 2 · El árbol de `lookup_ai_act` ya no pierde texto
+
+**Problema.** En el Anexo VII, la frase de entrada del 3.1 («La solicitud del proveedor
+incluirá:») y la primera frase del 3.2 van en un `<span>` junto a tablas o párrafos, y `_items`
+solo leía los bloques (`<p>`, `<table>`, `<div>`). **Arreglo.** El texto suelto entre bloques se
+guarda como un párrafo más, en su sitio. Ahora el árbol de cada artículo y anexo tiene las
+mismas palabras que el corpus. Frente a antes, solo cambia el Anexo VII, y el benchmark de la
+fase 2 no lo cita, así que sus cifras no cambian.
+
+### 2026-11-26 · Fase 3 · Troceado distinto para cada carpeta
+
+**Hipótesis.** Los artículos ya vienen troceados por apartado y les va bien el recursivo; las
+directrices son prosa larga y podrían ir mejor con el semántico. `ARCA_RAG_CHUNKING` acepta
+ahora una configuración por carpeta (`aiact:recursive-1000+title,directrices:semantic-90+title`,
+con `*:` para el resto). Hecho con `rag.evaluate`, con el mismo dorado:
+
+| Troceado | Fragmentos | R@5 | MRR@10 (λ*) | MRR con val. cruzada | λ por pliegue |
+|---|---|---|---|---|---|
+| recursive-1000+title | 2589 | 0,63 | 0,476 (0,7) | **0,476** | 0,7 ×5 |
+| semantic-90+title | 1686 | 0,62 | 0,475 (0,6) | 0,461 | 0,5-0,7 |
+| aiact recursivo + directrices semántico | 1976 | 0,68 | **0,483** (0,7) | 0,465 | 0,7-0,8 |
+
+Con λ = 0,7 en los dos, el MRR del troceado por carpeta mejora en 8 preguntas y empeora en 3, y
+la diferencia es +0,007, con un intervalo de confianza al 95 % (bootstrap pareado) de
+[−0,018; +0,033]. Con validación cruzada queda por debajo, y su λ cambia según el pliegue.
+**Decisión: se mantiene `recursive-1000+title`.** La opción por carpeta queda disponible.

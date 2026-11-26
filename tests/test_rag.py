@@ -11,7 +11,16 @@ from rag.evaluate import metrics, ranks_of_first_relevant
 from rag.generate import NOT_FOUND, RagPipeline, build_prompt, extract_citations, is_abstention
 from rag.goldset import GOLD_DIR, Evidence, GoldItem, RelevanceJudge, find_span, load_gold
 from rag.ingest import Document, load_corpus
-from rag.retriever import BM25Retriever, KnowledgeBase, VectorStore, _minmax, parse_config, tokenize
+from rag.retriever import (
+    BM25Retriever,
+    KnowledgeBase,
+    VectorStore,
+    _minmax,
+    config_for,
+    parse_config,
+    parse_folder_configs,
+    tokenize,
+)
 
 DOC = Document(
     "aiact/articulo_099.md",
@@ -82,6 +91,19 @@ def test_parse_config():
         parse_config("legal")
 
 
+def test_per_folder_configs():
+    mapping = parse_folder_configs("aiact:recursive-1000+title, *:semantic-90")
+    assert mapping == {"aiact": "recursive-1000+title", "*": "semantic-90"}
+    assert config_for("aiact/articulo_005.md", mapping) == "recursive-1000+title"
+    assert config_for("directrices/x.md", mapping) == "semantic-90"
+    assert parse_folder_configs("recursive-1000") == {"*": "recursive-1000"}
+    with pytest.raises(ValueError):
+        config_for("otros/x.md", parse_folder_configs("aiact:recursive-1000"))
+    for bad in ("aiact:legal", "aiact:recursive-1000,aiact:semantic-90", ":recursive-1000"):
+        with pytest.raises(ValueError):
+            parse_folder_configs(bad)
+
+
 # ----------------------------------------------------------------------------- retrievers
 
 
@@ -133,6 +155,22 @@ def kb(monkeypatch, tmp_path):
         Document("c.md", "Trabajo", "Inferir emociones en el trabajo está prohibido."),
     ]
     return KnowledgeBase.build("recursive-200", FakeEmbedder(), lam=0.5, docs=docs)
+
+
+def test_per_folder_config_chunks_and_titles_each_folder(monkeypatch, tmp_path):
+    monkeypatch.setattr("rag.retriever.INDEX_DIR", tmp_path)
+    long_text = " ".join(["La multa se fija por la autoridad competente."] * 20)
+    docs = [
+        Document("aiact/a.md", "Sanciones", long_text),
+        Document("guias/b.md", "Guía", long_text),
+    ]
+    kb = KnowledgeBase.build(
+        "aiact:recursive-200+title,*:recursive-2000", FakeEmbedder(), docs=docs
+    )
+    by_doc = {d.doc_id: [c for c in kb.chunks if c.doc_id == d.doc_id] for d in docs}
+    assert len(by_doc["aiact/a.md"]) > 1 and len(by_doc["guias/b.md"]) == 1
+    assert [c.doc_id for c in kb.chunks] == sorted(c.doc_id for c in kb.chunks)  # document order
+    assert list(tmp_path.glob("store-*.npz"))[0].name.count(":") == 0
 
 
 @pytest.mark.parametrize("retriever", ["dense", "bm25", "hybrid"])
