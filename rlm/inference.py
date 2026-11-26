@@ -100,11 +100,18 @@ class ReasoningModel:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         dtype = torch.bfloat16 if device == "cuda" else torch.float32
         self.tokenizer = AutoTokenizer.from_pretrained(self.base_model)
+        # With an adapter, load in fp32, fold the LoRA deltas into the weights and only then
+        # cast: unmerged, every linear layer runs two extra matmuls (x @ A @ B) per token,
+        # which halves the speed of one-question generation (36 -> 70 tok/s); merging in
+        # bf16 instead would round W + BA a second time. See docs/EXPERIMENTS.md, 24 nov.
         model = AutoModelForCausalLM.from_pretrained(
-            self.base_model, dtype=dtype, device_map=device
+            self.base_model,
+            dtype=torch.float32 if self.adapter_path else dtype,
+            device_map=device,
         )
         if self.adapter_path:
-            model = PeftModel.from_pretrained(model, self.adapter_path)
+            model = PeftModel.from_pretrained(model, self.adapter_path).merge_and_unload()
+            model = model.to(dtype)
         self.model = model.eval()
         self.verifier = VERIFIERS[self.verifier_name]()
 

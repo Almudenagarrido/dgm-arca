@@ -70,11 +70,16 @@ class HFBrain:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         dtype = torch.bfloat16 if device == "cuda" else torch.float32
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
-        model = AutoModelForCausalLM.from_pretrained(self.model_id, dtype=dtype, device_map=device)
+        # An adapter is merged in fp32 and then cast, as in rlm/inference.py: generation then
+        # runs at base-model speed instead of paying LoRA's extra matmuls on every token.
+        load_dtype = torch.float32 if self.adapter else dtype
+        model = AutoModelForCausalLM.from_pretrained(
+            self.model_id, dtype=load_dtype, device_map=device
+        )
         if self.adapter:
             from peft import PeftModel
 
-            model = PeftModel.from_pretrained(model, self.adapter)
+            model = PeftModel.from_pretrained(model, self.adapter).merge_and_unload().to(dtype)
         self.model = model.eval()
 
     def count_tokens(self, text: str) -> int:
