@@ -1,5 +1,7 @@
 # Anexo XIII. Criterios para la clasificación de los modelos de IA de uso general con riesgo sistémico a que se refiere el artículo 51
 
+Con el fin de determinar si un modelo de IA de uso general tiene unas capacidades o unos efectos equivalentes a los contemplados en el artículo 51, apartado 1, letra a), la Comisión tendrá en cuenta los siguientes criterios:
+
 a) el número de parámetros del modelo;
 
 b) la calidad o el tamaño del conjunto de datos, por ejemplo medidos a través de criptofichas;

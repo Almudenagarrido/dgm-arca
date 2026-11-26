@@ -220,3 +220,26 @@ def test_scoring_fills_defaults_and_parses_references():
     extra_flag = [{**calls[0], "arguments": {"annex_iii_use_cases": ["4.a"], "real_time": True}}]
     assert not score_case(case, extra_flag, "", registry)["arguments_ok"]
     assert score_case({"needs_tool": False}, [], "Hola")["selection_ok"]
+
+
+def test_parser_keeps_inline_lead_ins_beside_nested_points():
+    # Annex VII 3.1/3.2: the cell opens with a <span>, not a <p>, before its points or paragraphs.
+    xhtml = b"""<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><body>
+<div class="eli-subdivision" id="art_1"><p class="oj-ti-art">Art\xc3\xadculo 1</p></div>
+<div id="anx_VII">
+  <p class="oj-doc-ti">ANEXO VII</p>
+  <table><tbody><tr><td></td><td><p>3.1.</p></td><td>
+    <span>La solicitud del proveedor incluir\xc3\xa1:</span>
+    <table><tbody><tr><td><p>a)</p></td><td><p>el nombre del proveedor;</p></td></tr></tbody></table>
+  </td></tr></tbody></table>
+  <table><tbody><tr><td></td><td><p>3.2.</p></td><td>
+    <span>El sistema ser\xc3\xa1 evaluado.</span><p>La decisi\xc3\xb3n se notificar\xc3\xa1.</p>
+  </td></tr></tbody></table>
+</div>
+</body></html>"""
+    annex = ai_act_text.parse(xhtml).annexes["VII"]
+    lead_in = annex.child("3.1")
+    assert lead_in.text == "3.1. La solicitud del proveedor incluirá:"
+    assert lead_in.child("a").text == "a) el nombre del proveedor;"
+    assert annex.child("3.2").text == "3.2. El sistema será evaluado. La decisión se notificará."

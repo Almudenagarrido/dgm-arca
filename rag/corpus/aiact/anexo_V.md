@@ -1,5 +1,7 @@
 # Anexo V. Declaración UE de conformidad
 
+La declaración UE de conformidad a que se hace referencia en el artículo 47 contendrá toda la información siguiente:
+
 1. El nombre y tipo del sistema de IA, y toda referencia inequívoca adicional que permita la identificación y trazabilidad del sistema de IA.
 
 2. El nombre y la dirección del proveedor o, en su caso, de su representante autorizado.

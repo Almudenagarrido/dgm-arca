@@ -93,14 +93,41 @@ def _items(container) -> tuple[list[str], list[Unit]]:
     """Paragraph texts and lettered/numbered items directly inside ``container``.
 
     ``container`` is an element or a list of elements. A cell with no block children (Annex I
-    puts its entries in a ``<span>``) contributes its whole text.
+    puts its entries in a ``<span>``) contributes its whole text. Inline text beside block
+    children (Annex VII 3.1: a ``<span>`` lead-in before the tables of its points) is kept as a
+    paragraph in its place.
     """
     texts: list[str] = []
     items: list[Unit] = []
+    is_elem = isinstance(container, ET.Element)
     blocks = [e for e in container if _tag(e) in ("p", "table", "div")]
-    if not blocks and isinstance(container, ET.Element):
+    if not blocks and is_elem:
         return ([_text(container)] if _text(container) else []), []
-    for elem in blocks:
+    # Group runs of inline content (the element's text, <span>/<a> children, tails) into
+    # pseudo-paragraphs so they keep their position among the blocks.
+    sequence: list[ET.Element | str] = []
+    run: list[str] = [(container.text or "") if is_elem else ""]
+
+    def flush() -> None:
+        if text := " ".join(" ".join(run).split()):
+            sequence.append(text)
+        run.clear()
+
+    for elem in container:
+        if _tag(elem) in ("p", "table", "div"):
+            flush()
+            sequence.append(elem)
+        elif _tag(elem) not in ("col", "colgroup"):
+            run.append("".join(elem.itertext()))
+        run.append((elem.tail or "") if is_elem else "")
+    flush()
+    for elem in sequence:
+        if isinstance(elem, str):
+            if items:
+                items.append(Unit(label="", text=elem))
+            else:
+                texts.append(elem)
+            continue
         tag = _tag(elem)
         if tag == "p":
             if text := _text(elem):
@@ -164,13 +191,19 @@ def _annex(div: ET.Element) -> tuple[Unit, str]:
     return Unit(label=numeral, text=" ".join(texts), children=items), title
 
 
-def parse(xhtml: bytes, language: str = "es") -> Document:
+def parse_root(xhtml: bytes) -> ET.Element:
+    """The XHTML tree, with numeric superscripts written as ``^N``."""
     root = ET.fromstring(xhtml)
     # Superscripts carry meaning (10^25 FLOPs in Art. 51); itertext would glue them as "1025".
     # The Official Journal marks them as <span class="oj-super">; "n.º" uses it for a letter.
     for span in root.iter(f"{XHTML}span"):
         if "oj-super" in span.get("class", "") and (span.text or "").strip().isdigit():
             span.text = f"^{span.text.strip()}"
+    return root
+
+
+def parse(xhtml: bytes, language: str = "es") -> Document:
+    root = parse_root(xhtml)
     articles, article_titles, annexes, annex_titles, recitals = {}, {}, {}, {}, {}
     for div in root.iter(f"{XHTML}div"):
         ident = div.get("id", "")

@@ -2,7 +2,8 @@
 
 1. La autoridad notificante notificará a la Comisión y a los demás Estados miembros cualquier cambio pertinente en la notificación de un organismo notificado a través del sistema de notificación electrónica a que se refiere el artículo 30, apartado 2.
 
-2. Los procedimientos establecidos en los artículos 29 y 30 se aplicarán a las ampliaciones del ámbito de aplicación de la notificación. Para modificaciones de la notificación distintas de las ampliaciones de su ámbito de aplicación, se aplicarán los procedimientos establecidos en los apartados 3 a 9.
+2. Los procedimientos establecidos en los artículos 29 y 30 se aplicarán a las ampliaciones del ámbito de aplicación de la notificación.
+Para modificaciones de la notificación distintas de las ampliaciones de su ámbito de aplicación, se aplicarán los procedimientos establecidos en los apartados 3 a 9.
 
 3. Cuando un organismo notificado decida poner fin a sus actividades de evaluación de la conformidad, informará de ello a la autoridad notificante y a los proveedores afectados tan pronto como sea posible y, cuando se trate de un cese planeado, al menos un año antes de poner fin a sus actividades. Los certificados del organismo notificado podrán seguir siendo válidos durante un plazo de nueve meses después del cese de las actividades del organismo notificado, siempre que otro organismo notificado haya confirmado por escrito que asumirá la responsabilidad de los sistemas de IA de alto riesgo cubiertos por dichos certificados. Este último organismo notificado realizará una evaluación completa de los sistemas de IA de alto riesgo afectados antes del vencimiento de ese plazo de nueve meses y antes de expedir nuevos certificados para esos sistemas. Si el organismo notificado ha puesto fin a sus actividades, la autoridad notificante retirará la designación.
 

@@ -1,5 +1,9 @@
 # Anexo VIII. Información que debe presentarse para la inscripción en el registro de sistemas de IA de alto riesgo de conformidad con el artículo 49
 
+Sección A — Información que deben presentar los proveedores de sistemas de IA de alto riesgo de conformidad con el artículo 49, apartado 1
+
+Con respecto a los sistemas de IA de alto riesgo que vayan a inscribirse en el registro de conformidad con el artículo 49, apartado 1, se facilitará y se actualizará debidamente la información siguiente:
+
 1. El nombre, la dirección y los datos de contacto del proveedor.
 
 2. Cuando sea otra persona la que presente la información en nombre del proveedor, el nombre, dirección y datos de contacto de dicha persona.

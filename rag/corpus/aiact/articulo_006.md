@@ -6,7 +6,8 @@ b) que el producto del que el sistema de IA sea componente de seguridad con arre
 
 2. Además de los sistemas de IA de alto riesgo a que se refiere el apartado 1, también se considerarán de alto riesgo los sistemas de IA contemplados en el anexo III.
 
-3. No obstante lo dispuesto en el apartado 2, un sistema de IA a que se refiere el anexo III no se considerará de alto riesgo cuando no plantee un riesgo importante de causar un perjuicio a la salud, la seguridad o los derechos fundamentales de las personas físicas, también al no influir sustancialmente en el resultado de la toma de decisiones. El párrafo primero se aplicará cuando se cumpla cualquiera de las condiciones siguientes:
+3. No obstante lo dispuesto en el apartado 2, un sistema de IA a que se refiere el anexo III no se considerará de alto riesgo cuando no plantee un riesgo importante de causar un perjuicio a la salud, la seguridad o los derechos fundamentales de las personas físicas, también al no influir sustancialmente en el resultado de la toma de decisiones.
+El párrafo primero se aplicará cuando se cumpla cualquiera de las condiciones siguientes:
 a) que el sistema de IA esté destinado a realizar una tarea de procedimiento limitada;
 b) que el sistema de IA esté destinado a mejorar el resultado de una actividad humana previamente realizada;
 c) que el sistema de IA esté destinado a detectar patrones de toma de decisiones o desviaciones con respecto a patrones de toma de decisiones anteriores y no esté destinado a sustituir la valoración humana previamente realizada sin una revisión humana adecuada, ni a influir en ella, o

@@ -186,7 +186,7 @@ Los detalles y el análisis de fallos están en [`rag/README.md`](rag/README.md)
 
 ```
 pregunta ─► híbrido 0,7·denso + 0,3·BM25 ─► 30 candidatos ─► Qwen3-Reranker ─► top-k
-        ─► ¿P(sí) < 0,9932? ─► «No lo sé» | Qwen3-4B con fragmentos [1]..[k] ─► citas validadas
+        ─► ¿P(sí) < 0,9939? ─► «No lo sé» | Qwen3-4B con fragmentos [1]..[k] ─► citas validadas
 ```
 
 - **Conjunto dorado** escrito leyendo el corpus: 60 preguntas parafraseadas con la cita
@@ -200,15 +200,15 @@ pregunta ─► híbrido 0,7·denso + 0,3·BM25 ─► 30 candidatos ─► Qwen
 
 | Retriever (`recursive-1000+title`) | R@1 | R@5 | R@10 | MRR@10 |
 |---|---|---|---|---|
-| Denso | 0,33 | 0,58 | 0,68 | 0,434 |
-| BM25 | 0,17 | 0,47 | 0,57 | 0,291 |
-| Híbrido λ = 0,7 | 0,37 | 0,60 | 0,73 | 0,468 |
+| Denso | 0,33 | 0,62 | 0,70 | 0,443 |
+| BM25 | 0,17 | 0,48 | 0,57 | 0,296 |
+| Híbrido λ = 0,7 | 0,37 | 0,63 | 0,73 | 0,476 |
 
 | Respuestas (70 preguntas) | Correcta | Fiel | Citas válidas | Se abstiene sin respuesta | Abstención falsa |
 |---|---|---|---|---|---|
-| Híbrido top-5 | 75 % | 85 % | 100 % | 80 % | 3 % |
+| Híbrido top-5 | 77 % | 80 % | 100 % | 80 % | 3 % |
 | + reranker | 83 % | 88 % | 100 % | 80 % | 2 % |
-| + reranker + umbral (`/rag`) | 78 % | 83 % | 100 % | 90 % | 7 % |
+| + reranker + umbral (`/rag`) | 78 % | 85 % | 100 % | 90 % | 7 % |
 
 El reranker es la pieza que más aporta. El umbral, calibrado con su propio conjunto, cambia
 tres respuestas correctas por una abstención más. Se mantiene porque una respuesta legal

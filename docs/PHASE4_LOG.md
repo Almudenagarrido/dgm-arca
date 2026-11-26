@@ -89,11 +89,14 @@
 - Ideas → aclarar la descripción de ese dato en `classify_risk`, o un paso que verifique la
   clasificación antes de responder.
 
-### Limitación conocida · Corpus incompleto (detectada por Victoria, 23 nov)
-- 19 ficheros de artículos del corpus tienen el texto incompleto.
-- Afecta a las respuestas que se basan en esos artículos (`/rag` y `search_knowledge_base`
+### ~~Limitación conocida~~ Arreglado (24 nov) · Corpus incompleto (detectada por Victoria, 23 nov)
+- 19 ficheros del corpus (6 artículos y 13 anexos) tenían el texto incompleto.
+- Afectaba a las respuestas que se basan en esos artículos (`/rag` y `search_knowledge_base`
   del agente); la clasificación y las multas no, porque salen del motor de reglas.
-- Regenerarlo lleva ~3 h con la evaluación → se arregla en el proyecto final.
+- Arreglo: `rag/download_corpus.py` escribe el Markdown recorriendo el XHTML en orden (detalle
+  en `docs/CORPUS_EXTRACCION.md`, 3.4). Regenerar + reevaluar la fase 3 llevó ~40 min, no 3 h.
+  Las cifras apenas cambian (MRR 0,468 → 0,476; respuestas correctas iguales) porque casi
+  ninguna pregunta del dorado dependía del texto perdido.
 
 ### Comparación de cerebros (20 tareas, 23 nov)
 - remote 90 % (IC 70-97) · thinking 30 % (15-52) · rlm 10 % (3-30) · base 5 % (1-24).

@@ -1,5 +1,7 @@
 # Anexo I. Lista de actos legislativos de armonización de la Unión
 
+Sección A — Lista de actos legislativos de armonización de la Unión basados en el nuevo marco legislativo
+
 1. Directiva 2006/42/CE del Parlamento Europeo y del Consejo, de 17 de mayo de 2006, relativa a las máquinas y por la que se modifica la Directiva 95/16/CE (DO L 157 de 9.6.2006, p. 24)
 
 2. Directiva 2009/48/CE del Parlamento Europeo y del Consejo, de 18 de junio de 2009, sobre la seguridad de los juguetes (DO L 170 de 30.6.2009, p. 1)

@@ -1,5 +1,7 @@
 # Artículo 3. Definiciones
 
+A los efectos del presente Reglamento, se entenderá por:
+
 1) «sistema de IA»: un sistema basado en una máquina que está diseñado para funcionar con distintos niveles de autonomía y que puede mostrar capacidad de adaptación tras el despliegue, y que, para objetivos explícitos o implícitos, infiere de la información de entrada que recibe la manera de generar resultados de salida, como predicciones, contenidos, recomendaciones o decisiones, que pueden influir en entornos físicos o virtuales;
 
 2) «riesgo»: la combinación de la probabilidad de que se produzca un perjuicio y la gravedad de dicho perjuicio;
@@ -89,8 +91,8 @@
 44) «espacio de acceso público»: cualquier lugar físico, de propiedad privada o pública, al que pueda acceder un número indeterminado de personas físicas, con independencia de que deban cumplirse determinadas condiciones de acceso y con independencia de las posibles restricciones de capacidad;
 
 45) «autoridad garante del cumplimiento del Derecho»:
-a) toda autoridad pública competente para la prevención, la investigación, la detección o el enjuiciamiento de delitos o la ejecución de sanciones penales, incluidas la protección frente a amenazas para la seguridad pública y la prevención de dichas amenazas, o
-b) cualquier otro organismo o entidad a quien el Derecho del Estado miembro haya confiado el ejercicio de la autoridad pública y las competencias públicas a efectos de prevención, investigación, detección o enjuiciamiento de delitos o ejecución de sanciones penales, incluidas la protección frente a amenazas para la seguridad pública y la prevención de dichas amenazas;
+  a) toda autoridad pública competente para la prevención, la investigación, la detección o el enjuiciamiento de delitos o la ejecución de sanciones penales, incluidas la protección frente a amenazas para la seguridad pública y la prevención de dichas amenazas, o
+  b) cualquier otro organismo o entidad a quien el Derecho del Estado miembro haya confiado el ejercicio de la autoridad pública y las competencias públicas a efectos de prevención, investigación, detección o enjuiciamiento de delitos o ejecución de sanciones penales, incluidas la protección frente a amenazas para la seguridad pública y la prevención de dichas amenazas;
 
 46) «garantía del cumplimiento del Derecho»: las actividades realizadas por las autoridades garantes del cumplimiento del Derecho, o en su nombre, para la prevención, la investigación, la detección o el enjuiciamiento de delitos o la ejecución de sanciones penales, incluidas la protección frente a amenazas para la seguridad pública y la prevención de dichas amenazas;
 
@@ -99,10 +101,10 @@ b) cualquier otro organismo o entidad a quien el Derecho del Estado miembro haya
 48) «autoridad nacional competente»: una autoridad notificante o una autoridad de vigilancia del mercado; en lo que respecta a sistemas de IA puestos en servicio o utilizados por instituciones, órganos y organismos de la Unión, las referencias hechas en el presente Reglamento a autoridades nacionales competentes o a autoridades de vigilancia del mercado se interpretarán como referencias al Supervisor Europeo de Protección de Datos;
 
 49) «incidente grave»: un incidente o defecto de funcionamiento de un sistema de IA que, directa o indirectamente, tenga alguna de las siguientes consecuencias:
-a) el fallecimiento de una persona o un perjuicio grave para su salud;
-b) una alteración grave e irreversible de la gestión o el funcionamiento de infraestructuras críticas;
-c) el incumplimiento de obligaciones en virtud del Derecho de la Unión destinadas a proteger los derechos fundamentales;
-d) daños graves a la propiedad o al medio ambiente;
+  a) el fallecimiento de una persona o un perjuicio grave para su salud;
+  b) una alteración grave e irreversible de la gestión o el funcionamiento de infraestructuras críticas;
+  c) el incumplimiento de obligaciones en virtud del Derecho de la Unión destinadas a proteger los derechos fundamentales;
+  d) daños graves a la propiedad o al medio ambiente;
 
 50) «datos personales»: los datos personales tal como se definen en el artículo 4, punto 1, del Reglamento (UE) 2016/679;
 
@@ -127,11 +129,11 @@ d) daños graves a la propiedad o al medio ambiente;
 60) «ultrasuplantación»: un contenido de imagen, audio o vídeo generado o manipulado por una IA que se asemeja a personas, objetos, lugares, entidades o sucesos reales y que puede inducir a una persona a pensar erróneamente que son auténticos o verídicos;
 
 61) «infracción generalizada»: todo acto u omisión contrario al Derecho de la Unión por el que se protegen los intereses de las personas y que:
-a) haya perjudicado o pueda perjudicar los intereses colectivos de personas que residen en al menos dos Estados miembros distintos de aquel en el que:
-  i) se originó o tuvo lugar el acto u omisión,
-  ii) esté ubicado o establecido el proveedor de que se trate o, en su caso, su representante autorizado, o
-  iii) esté establecido el responsable del despliegue en el momento de cometer la infracción;
-b) haya perjudicado, perjudique o pueda perjudicar los intereses colectivos de las personas y tenga características comunes —incluidas la misma práctica ilícita o la vulneración del mismo interés— y sea cometido simultáneamente por el mismo operador en al menos tres Estados miembros;
+  a) haya perjudicado o pueda perjudicar los intereses colectivos de personas que residen en al menos dos Estados miembros distintos de aquel en el que:
+    i) se originó o tuvo lugar el acto u omisión,
+    ii) esté ubicado o establecido el proveedor de que se trate o, en su caso, su representante autorizado, o
+    iii) esté establecido el responsable del despliegue en el momento de cometer la infracción;
+  b) haya perjudicado, perjudique o pueda perjudicar los intereses colectivos de las personas y tenga características comunes —incluidas la misma práctica ilícita o la vulneración del mismo interés— y sea cometido simultáneamente por el mismo operador en al menos tres Estados miembros;
 
 62) «infraestructura crítica»: una infraestructura crítica tal como se define en el artículo 2, punto 4, de la Directiva (UE) 2022/2557;
 

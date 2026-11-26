@@ -86,7 +86,10 @@ El parser (`xml.etree.ElementTree`) construye un árbol de unidades citables
 
 ### 3.3 Escritura en Markdown
 
-`rag/download_corpus.py` recorre ese árbol y escribe:
+`rag/download_corpus.py` escribe el Markdown recorriendo el XHTML **en el orden del documento**,
+no el árbol de 3.2. El árbol sirve para citar puntos, pero deja fuera el texto que no es un punto
+numerado (ver «Texto perdido» en 3.4). Un test comprueba que cada fichero conserva todos los
+caracteres del XHTML y en el mismo orden. Escribe:
 
 - **Un fichero por artículo** (`articulo_005.md`): `# Artículo 5. Prácticas de IA prohibidas`,
   después **un bloque por apartado separado por una línea en blanco**, y dentro de cada apartado
@@ -107,6 +110,7 @@ El parser (`xml.etree.ElementTree`) construye un árbol de unidades citables
 | Párrafos de cierre tras una lista | En el Art. 5.1, el párrafo «El párrafo primero, letra h), se entiende sin perjuicio...» va **después** de las letras y se colaba al principio | El texto que sigue a una lista se guarda como unidad sin etiqueta, detrás de la lista |
 | Artículos sin apartados numerados | El Art. 3 (definiciones) y otros cortos no tienen `<div id="NNN.MMM">` | El contenido se toma de la introducción del artículo; en los cortos el texto va justo después del título |
 | Tablas anidadas | Algunas letras contienen sub-tablas | Se procesa una fila por tabla y las anidadas se tratan por recursión |
+| **Texto perdido** (arreglado el 24 nov) | El Markdown se escribía desde el árbol de 3.2 y solo incluía los hijos de cada unidad. Se perdían ~3.700 caracteres (sin contar espacios) en 19 ficheros: el Anexo VI quedaba vacío, el Art. 113 sin «entrará en vigor… aplicable a partir del 2 de agosto de 2026», el Anexo VII sin sus puntos 1-2 ni el «La solicitud del proveedor incluirá:» del 3.1, las frases de entrada de los Arts. 3, 16, 66, 108 y 110 y de casi todos los anexos, y en otros 34 los subpárrafos quedaban pegados en una línea | El Markdown se escribe recorriendo el XHTML en orden. Los `<p style="display: inline">` (Anexo VI: «1.» y su texto) se juntan en una línea. Test: `tests/test_download_corpus.py` |
 | Formato de CELLAR cambiante | Si la Oficina de Publicaciones cambia el XHTML, el parser no encontraría artículos | El parser lanza un error explícito si no encuentra ningún `art_N`, en lugar de escribir un corpus vacío |
 
 **Calidad final:** el texto del Reglamento está limpio, completo (113 + 13 + 180) y estructurado.

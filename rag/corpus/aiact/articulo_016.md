@@ -1,5 +1,7 @@
 # Artículo 16. Obligaciones de los proveedores de sistemas de IA de alto riesgo
 
+Los proveedores de sistemas de IA de alto riesgo:
+
 a) velarán por que sus sistemas de IA de alto riesgo cumplan los requisitos definidos en la sección 2;
 
 b) indicarán en el sistema de IA de alto riesgo o, cuando no sea posible, en el embalaje del sistema o en la documentación que lo acompañe, según proceda, su nombre, su nombre comercial registrado o marca registrada y su dirección de contacto;
